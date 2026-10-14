@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#121212">
+  <meta name="description" content="Browse bowling equipment at BowlersMechanic and send an order enquiry directly through WhatsApp.">
+  <title>BowlersMechanic | Bowling Equipment</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <script>window.__API_BASE__ = window.__API_BASE__ || '';</script>
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="BowlersMechanic home">
+      <span class="brand-mark" aria-hidden="true">BM</span>
+      <span class="brand-name">Bowlers<span>Mechanic</span></span>
+    </a>
+    <div class="header-actions">
+      <button class="header-menu-toggle" id="menu-toggle" type="button" aria-expanded="false" aria-controls="main-menu"><span aria-hidden="true">☰</span> Menu</button>
+      <button class="header-cart-toggle" id="cart-toggle" type="button" aria-label="Open shopping cart">Cart <span id="cart-count">0</span></button>
+    </div>
+    <nav class="main-nav" id="main-menu" aria-label="Main navigation" hidden>
+      <a href="#top">Home</a>
+      <a href="#catalogue" data-category-link="all">Shop All</a>
+      <a href="#catalogue" data-category-link="performance-bowling-balls">Performance Bowling Balls</a>
+      <a href="#catalogue" data-category-link="beginner-bowling-balls">Beginner Bowling Balls</a>
+      <a href="#catalogue" data-category-link="spare-bowling-balls">Spare Bowling Balls</a>
+      <a href="#catalogue" data-category-link="bowling-ball-accessories">Bowling Ball Accessories</a>
+      <a href="#shipping">Shipping Information</a>
+      <a href="#contact">Contact Us</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow"><span></span> Pro shop / Bowling equipment</p>
+        <h1 id="hero-title">Find your<br><span>next strike.</span></h1>
+        <p class="hero-description">The right gear changes how you play. Explore the catalogue and talk directly with BowlersMechanic about your next setup.</p>
+        <a class="button button-orange" href="#catalogue">Explore equipment <span aria-hidden="true">↓</span></a>
+        <p class="hero-note">Every order is reviewed and confirmed by the store.</p>
+      </div>
+      <div class="hero-index" aria-hidden="true"><span>01</span><i></i><span>03</span></div>
+    </section>
+
+    <section class="catalogue section-wrap" id="catalogue" aria-labelledby="catalogue-title">
+      <div class="section-heading">
+        <div><p class="eyebrow eyebrow-dark"><span></span> Browse the shop</p><h2 id="catalogue-title">The equipment <em>edit.</em></h2></div>
+        <p class="section-aside">The current catalogue, in one place.<br>Ask us about anything you need.</p>
+      </div>
+      <div class="catalog-controls">
+        <div class="filter-list" role="group" aria-label="Filter products by category">
+          <button class="filter-button is-active" type="button" data-category="all" aria-pressed="true">All equipment</button>
+          <button class="filter-button" type="button" data-category="bowling-ball" aria-pressed="false">Bowling balls</button>
+          <button class="filter-button" type="button" data-category="accessory" aria-pressed="false">Accessories</button>
+          <button class="filter-button" type="button" data-category="bag" aria-pressed="false">Bags</button>
+          <button class="filter-button" type="button" data-category="apparel" aria-pressed="false">Apparel</button>
+        </div>
+        <label class="search-box"><span class="sr-only">Search products</span><span aria-hidden="true">⌕</span><input id="product-search" type="search" placeholder="Search equipment"></label>
+      </div>
+      <p class="catalog-status" id="catalog-status" role="status" aria-live="polite">Loading catalogue...</p>
+      <div class="notice" id="catalog-notice" hidden></div>
+      <div class="product-grid" id="product-grid" aria-live="polite"></div>
+      <div class="empty-state" id="empty-state" hidden><span class="empty-mark">BM</span><h3>No matching equipment</h3><p>Try another category or clear your search.</p><button class="text-button" id="clear-filters" type="button">Clear filters <span aria-hidden="true">↗</span></button></div>
+    </section>
+
+    <section class="shipping-section section-wrap" id="shipping" aria-labelledby="shipping-title">
+      <div class="section-heading">
+        <div><p class="eyebrow eyebrow-dark"><span></span> Shipping information</p><h2 id="shipping-title">Shipping <em>details.</em></h2></div>
+      </div>
+      <div class="shipping-content">
+        <p>Free shipping is available only for orders shipped within the United States.</p>
+        <p>Contact the shop to confirm whether your order qualifies for free shipping and to verify any shipping costs before ordering.</p>
+      </div>
+    </section>
+
+    <section class="order-section" id="order" aria-labelledby="order-title">
+      <div class="order-intro">
+        <p class="eyebrow"><span></span> Start a conversation</p>
+        <h2 id="order-title">Let’s get your<br><em>game rolling.</em></h2>
+        <p>Share what you’re looking for. Your details will be prepared in a WhatsApp message for you to review and send to the store.</p>
+        <div class="order-assurance"><span class="assurance-dot"></span><span>No order is confirmed until the owner confirms it with you.</span></div>
+      </div>
+      <form class="order-form" id="order-form" action="/api/orders/whatsapp" method="post" target="_blank">
+        <div class="form-topline"><span>ORDER ENQUIRY</span><span>01 <i>/</i> 02</span></div>
+        <div class="form-grid">
+          <label class="field"><span>Your name <b>*</b></span><input name="customerName" autocomplete="name" minlength="2" maxlength="100" required placeholder="Name"></label>
+          <label class="field"><span>Phone number <b>*</b></span><input name="customerPhone" type="tel" autocomplete="tel" minlength="7" maxlength="24" required placeholder="Your number"></label>
+          <label class="field field-full"><span>Email <small>Optional</small></span><input name="email" type="email" autocomplete="email" maxlength="254" placeholder="you@example.com"></label>
+          <label class="field"><span>Product <b>*</b></span><select name="productId" id="product-select" required><option value="">Select equipment</option></select></label>
+          <label class="field"><span>Quantity <b>*</b></span><input name="quantity" type="number" min="1" max="50" step="1" value="1" required></label>
+          <label class="field field-full"><span>Payment method <b>*</b></span><select name="paymentMethod" required><option value="">Choose a payment method</option><option value="Zelle">Zelle</option><option value="Chime">Chime</option><option value="Apple Pay">Apple Pay</option><option value="Cash App">Cash App</option></select></label>
+          <label class="field field-full"><span>Anything else? <small>Optional</small></span><textarea name="requirements" rows="3" maxlength="500" placeholder="Fit, weight, preferences or questions"></textarea></label>
+        </div>
+        <p class="form-feedback" id="form-feedback" role="status" aria-live="polite"></p>
+        <button class="button button-orange submit-button" type="submit">Continue to WhatsApp <span aria-hidden="true">↗</span></button>
+        <p class="form-footnote">Your message opens as a draft. Review the details and send it to enquire; the store will confirm availability and next steps.</p>
+        <p class="payment-note"><strong>Payment options:</strong> Zelle, Chime, Apple Pay, and Cash App. The shop will provide payment details after confirming your order.</p>
+      </form>
+    </section>
+
+    <section class="contact-section section-wrap" id="contact" aria-labelledby="contact-title">
+      <div class="section-heading">
+        <div><p class="eyebrow eyebrow-dark"><span></span> Contact us</p><h2 id="contact-title">Talk to the <em>shop.</em></h2></div>
+      </div>
+      <div class="contact-card">
+        <p>Need help choosing a ball, checking stock, or confirming a setup? Reach out directly and the owner will advise on the most suitable options.</p>
+        <div class="contact-actions"><a href="#order" class="button button-orange">Start an enquiry <span aria-hidden="true">↗</span></a><a id="email-shop-button" href="mailto:beachgrovebowling@gmail.com" class="text-button">Email the shop</a></div>
+      </div>
+    </section>
+  </main>
+
+  <aside class="cart-drawer" id="cart-drawer" aria-label="Shopping cart">
+    <div class="cart-header">
+      <h3>Shopping cart</h3>
+      <button type="button" class="cart-close" id="cart-close" aria-label="Close cart">×</button>
+    </div>
+    <div class="cart-body" id="cart-items"></div>
+    <div class="cart-footer">
+      <div class="cart-total"><span>Subtotal</span><strong id="cart-subtotal">$0.00</strong></div>
+      <p class="cart-note">Any items without confirmed pricing require owner confirmation before a final total is set.</p>
+      <button type="button" class="button button-orange cart-submit" id="cart-submit">Proceed to WhatsApp <span aria-hidden="true">↗</span></button>
+    </div>
+  </aside>
+
+  <footer class="site-footer"><a class="brand brand-footer" href="#top"><span class="brand-mark" aria-hidden="true">BM</span><span class="brand-name">Bowlers<span>Mechanic</span></span></a><p>Good gear. Better frames.</p><a href="#top" class="back-top">Back to top ↑</a></footer>
+
+  <dialog class="product-dialog" id="product-dialog" aria-labelledby="dialog-title">
+    <button class="dialog-close" type="button" aria-label="Close product details">×</button>
+    <div class="dialog-image" id="dialog-image"></div>
+    <div class="dialog-copy"><p class="eyebrow eyebrow-dark" id="dialog-brand"></p><h2 id="dialog-title"></h2><p class="dialog-price" id="dialog-price"></p><p id="dialog-description"></p><p class="dialog-availability" id="dialog-availability"></p><button class="button button-orange" id="dialog-order" type="button">Enquire about this item <span aria-hidden="true">↗</span></button></div>
+  </dialog>
+</body>
+</html>

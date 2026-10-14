@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#151515">
+  <title>Admin | BowlersMechanic</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/admin.css">
+  <script>window.__API_BASE__ = window.__API_BASE__ || '';</script>
+  <script src="/admin.js" defer></script>
+</head>
+<body class="admin-body">
+  <main id="login-view" class="login-view" hidden>
+    <section class="login-panel">
+      <a class="admin-brand" href="/"><span class="admin-mark">BM</span><span>Bowlers<span class="brand-sub">Mechanic / Admin</span></span></a>
+      <div class="login-copy"><p class="admin-eyebrow">STORE CONTROL / SECURE ACCESS</p><h1>Good to<br><em>see you.</em></h1><p>Sign in to manage your catalogue, content and order requests.</p></div>
+      <form id="login-form" class="admin-form">
+        <label>Email address<input name="email" type="email" autocomplete="username" required maxlength="254" placeholder="owner@example.com"></label>
+        <label>Password<input name="password" type="password" autocomplete="current-password" required maxlength="128" placeholder="Your password"></label>
+        <p class="form-message" id="login-message" role="alert"></p>
+        <button class="admin-button primary" type="submit">Sign in <span aria-hidden="true">↗</span></button>
+      </form>
+      <a class="login-return" href="/">← Return to storefront</a>
+    </section>
+    <aside class="login-art"><div class="login-art-copy"><span>BM / 01</span><strong>THE GAME<br>STARTS HERE.</strong><i>ADMINISTRATION / PRIVATE</i></div><div class="login-ball"></div></aside>
+  </main>
+
+  <div id="admin-app" class="admin-shell" hidden>
+    <aside class="sidebar" id="sidebar">
+      <a class="admin-brand" href="/admin"><span class="admin-mark">BM</span><span>Bowlers<span class="brand-sub">Mechanic / Admin</span></span></a>
+      <p class="nav-label">WORKSPACE</p>
+      <nav class="admin-nav" aria-label="Admin navigation">
+        <button data-view="dashboard" class="nav-item active"><span>◫</span> Overview</button>
+        <button data-view="products" class="nav-item"><span>◉</span> Products</button>
+        <button data-view="orders" class="nav-item"><span>↗</span> Order requests <b id="pending-badge" hidden></b></button>
+        <button data-view="media" class="nav-item"><span>▧</span> Media library</button>
+        <button data-view="categories" class="nav-item"><span>⌘</span> Categories & brands</button>
+        <button data-view="homepage" class="nav-item"><span>▤</span> Homepage editor</button>
+        <button data-view="settings" class="nav-item"><span>⚙</span> Website settings</button>
+      </nav>
+      <p class="nav-label nav-label-lower">ACCOUNT</p>
+      <nav class="admin-nav"><button data-view="account" class="nav-item"><span>○</span> Admin accounts</button><button data-view="password" class="nav-item"><span>⌑</span> Change password</button></nav>
+      <div class="sidebar-foot"><span class="connection-dot" id="sidebar-dot"></span><span id="sidebar-status">Checking connection</span><a href="/" target="_blank" rel="noreferrer">View storefront ↗</a></div>
+    </aside>
+    <section class="workspace">
+      <header class="admin-topbar"><button class="mobile-menu" id="mobile-menu" aria-label="Open navigation">☰</button><div class="breadcrumb">BOWLERSMECHANIC <span>/</span> <strong id="current-section">OVERVIEW</strong></div><div class="top-actions"><span class="admin-user" id="admin-user"></span><button class="logout-button" id="logout-button" title="Sign out">Sign out ↗</button></div></header>
+      <main class="admin-content" id="admin-content" tabindex="-1"></main>
+    </section>
+  </div>
+  <div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="true"></div>
+  <dialog id="media-picker" class="admin-dialog media-picker"><div class="dialog-heading"><div><p class="admin-eyebrow">MEDIA LIBRARY</p><h2>Choose an image</h2></div><button class="icon-button" data-close-dialog aria-label="Close">×</button></div><div class="picker-grid" id="picker-grid"></div></dialog>
+  <dialog id="confirm-dialog" class="admin-dialog confirm-dialog"><p id="confirm-copy"></p><div class="dialog-actions"><button class="admin-button secondary" data-close-dialog>Cancel</button><button class="admin-button danger" id="confirm-action">Confirm</button></div></dialog>
+</body>
+</html>

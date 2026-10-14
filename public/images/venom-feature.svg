@@ -1,0 +1,71 @@
+<svg width="1200" height="700" viewBox="0 0 1200 700" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="700" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f2f1ed"/>
+      <stop offset="1" stop-color="#dfe0dc"/>
+    </linearGradient>
+    <linearGradient id="crate" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#F3803A"/>
+      <stop offset="1" stop-color="#E9761D"/>
+    </linearGradient>
+    <radialGradient id="ball" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(560 335) rotate(90) scale(230 230)">
+      <stop stop-color="#3B50C9"/>
+      <stop offset="0.48" stop-color="#1F2B8D"/>
+      <stop offset="1" stop-color="#0F1236"/>
+    </radialGradient>
+    <radialGradient id="ballGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(620 270) rotate(90) scale(250 250)">
+      <stop stop-color="#9A9CFF" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#9A9CFF" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="24" stdDeviation="22" flood-color="#102030" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="700" fill="url(#bg)"/>
+
+  <g opacity="0.15">
+    <path d="M0 92H1200" stroke="#89959E" stroke-width="2"/>
+    <path d="M0 210H1200" stroke="#89959E" stroke-width="2"/>
+    <path d="M0 328H1200" stroke="#89959E" stroke-width="2"/>
+    <path d="M0 446H1200" stroke="#89959E" stroke-width="2"/>
+    <path d="M0 564H1200" stroke="#89959E" stroke-width="2"/>
+  </g>
+
+  <g filter="url(#shadow)">
+    <g transform="translate(60 270)">
+      <path d="M0 20H360V342C360 351.941 351.941 360 342 360H18C8.05887 360 0 351.941 0 342V20Z" fill="url(#crate)"/>
+      <path d="M32 48H328V306C328 314.837 320.837 322 312 322H48C39.1634 322 32 314.837 32 306V48Z" fill="#EA7B31" opacity="0.9"/>
+      <path d="M13 16H344L362 28V318C362 334.569 348.569 348 332 348H29C12.4315 348 0 334.569 0 318V35L13 16Z" fill="url(#crate)"/>
+      <path d="M350 6H34L10 21L0 35V273L26 260L44 248H314L338 260L362 273V35L350 6Z" fill="#DA6415" opacity="0.65"/>
+      <rect x="36" y="48" width="292" height="270" rx="2" fill="#101520" opacity="0.34"/>
+      <path d="M80 88H274" stroke="#F7C68F" stroke-width="6" stroke-linecap="round" opacity="0.8"/>
+      <path d="M80 120H266" stroke="#F7C68F" stroke-width="4" stroke-linecap="round" opacity="0.8"/>
+      <path d="M70 170C109 180 176 178 260 161L278 268H70V170Z" fill="#0C1114" opacity="0.64"/>
+      <g opacity="0.7">
+        <path d="M70 190C110 170 136 167 176 171C219 175 273 190 300 204L273 270H90L70 190Z" fill="#F0B66F"/>
+      </g>
+      <g>
+        <path d="M58 286L302 286" stroke="#F7C68F" stroke-width="6" stroke-linecap="round" opacity="0.8"/>
+      </g>
+      <text x="180" y="250" text-anchor="middle" fill="#0E1116" font-size="30" font-weight="800" font-family="Arial, Helvetica, sans-serif" letter-spacing="1">MOTIV</text>
+      <text x="180" y="150" text-anchor="middle" fill="#F2F2F2" font-size="26" font-weight="700" font-family="Arial, Helvetica, sans-serif" letter-spacing="2">VENOM</text>
+    </g>
+
+    <g transform="translate(600 190)">
+      <ellipse cx="0" cy="330" rx="220" ry="54" fill="#D5E7E1"/>
+      <circle cx="0" cy="0" r="195" fill="url(#ball)"/>
+      <circle cx="-42" cy="-26" r="50" fill="url(#ballGlow)"/>
+      <path d="M-36 -18C-6 -70 75 -90 123 -48C173 0 171 88 91 126C13 164 -34 150 -74 110C-109 75 -100 47 -117 9C-122 -5 -133 -24 -145 -28L-123 -92C-88 -95 -63 -79 -36 -18Z" fill="#F3652C" opacity="0.96"/>
+      <path d="M-27 92C-1 124 67 148 100 131C143 110 169 82 208 23C171 72 146 87 115 102C82 117 40 125 -11 106L-27 92Z" fill="#F3652C" opacity="0.94"/>
+      <path d="M42 64C59 58 67 65 73 76C84 97 94 120 116 133C136 145 171 151 189 131C206 111 198 80 170 61C140 42 90 40 69 57C55 67 48 77 42 64Z" fill="#F3652C" opacity="0.8"/>
+      <path d="M-80 16C-60 24 -41 35 -23 51C-4 66 8 83 19 106C33 136 42 169 69 176C92 181 117 170 127 149C137 129 135 98 116 70C94 39 58 19 23 5C-11 -8 -42 -8 -80 16Z" fill="#F3652C" opacity="0.7"/>
+      <path d="M-76 0C-52 -15 -28 -24 -17 -27L-32 -60C-68 -44 -93 -23 -76 0Z" fill="#F3652C"/>
+      <path d="M30 -12L7 -92L71 -66L30 -12Z" fill="#F3652C"/>
+      <path d="M56 41L120 2L95 -56L69 -14L56 41Z" fill="#F3652C"/>
+      <path d="M-25 43L-90 4L-58 -48L-19 -18L-25 43Z" fill="#F3652C"/>
+      <path d="M-30 -32C-5 -80 29 -118 56 -164C83 -110 79 -68 63 -38C48 -10 14 -12 -30 -32Z" fill="#F3652C" opacity="0.92"/>
+      <text x="0" y="128" text-anchor="middle" fill="#F4F7FF" font-size="78" font-weight="800" font-family="Arial, Helvetica, sans-serif" letter-spacing="2">VENOM</text>
+    </g>
+  </g>
+</svg>

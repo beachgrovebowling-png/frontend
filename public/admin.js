@@ -113,7 +113,7 @@ async function renderDashboard() {
 
 function ordersTable(orders = [], compact = false) {
   if (!orders.length) return '<div class="no-data">No order requests have been recorded.</div>';
-  return `<table><thead><tr><th>Reference</th><th>Customer / Product</th><th>Status</th><th>Received</th>${compact ? '' : '<th></th>'}</tr></thead><tbody>${orders.map(order => `<tr><td><span class="table-title">${escapeHtml(order.reference)}</span></td><td><span class="table-title">${escapeHtml(order.customer?.name)}</span><span class="table-sub">${escapeHtml(order.product?.name)} × ${Number(order.product?.quantity) || 0}</span></td><td>${statusPill(order.status)}</td><td>${escapeHtml(fmtDate(order.createdAt))}</td>${compact ? '' : `<td><button class="small-button" data-order="${escapeHtml(order._id)}">Open</button></td>`}</tr>`).join('')}</tbody></table>`;
+  return `<table><thead><tr><th>Reference</th><th>Customer / Product</th><th>Status</th><th>Received</th>${compact ? '' : '<th></th>'}</tr></thead><tbody>${orders.map(order => `<tr><td><span class="table-title">${escapeHtml(order.reference)}</span></td><td><span class="table-title">${escapeHtml(order.customer?.name)}</span><span class="table-sub">${escapeHtml(order.product?.name)} × ${Number(order.product?.quantity) || 0}</span></td><td>${statusPill(order.status)}</td><td>${escapeHtml(fmtDate(order.createdAt))}</td>${compact ? '' : `<td><div class="row-actions"><button class="small-button" data-order="${escapeHtml(order._id)}">Open</button><button class="small-button" data-order-delete="${escapeHtml(order._id)}" data-order-reference="${escapeHtml(order.reference)}">Delete</button></div></td>`}</tr>`).join('')}</tbody></table>`;
 }
 
 async function renderProducts() {
@@ -397,6 +397,7 @@ async function handleClick(event) {
   if (target.dataset.mediaSearch) { adminState.search = document.querySelector('#media-search').value; adminState.mediaPage = 1; loadView('media'); }
   if (target.dataset.mediaPage) { adminState.mediaPage = Math.max(1, Number(target.dataset.mediaPage)); loadView('media'); }
   if (target.dataset.order) editOrder(target.dataset.order);
+  if (target.dataset.orderDelete) askConfirm(`Permanently delete order ${target.dataset.orderReference || ''}? This cannot be undone.`, async () => { try { await api(`/api/admin/orders/${target.dataset.orderDelete}`, { method: 'DELETE' }); notify('Order deleted.'); loadView('orders'); } catch (error) { notify(error.message, 'error'); } });
   if (target.hasAttribute('data-order-search')) { adminState.search = document.querySelector('#orders-search').value; adminState.status = document.querySelector('#orders-status').value; adminState.page = 1; loadView('orders'); }
   if (target.hasAttribute('data-export-orders')) { window.location.assign(apiUrl('/api/admin/orders.csv')); }
   if (target.hasAttribute('data-preview-home')) window.open('/', '_blank', 'noopener');

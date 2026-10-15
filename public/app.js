@@ -219,7 +219,7 @@ function applyCategoryFilters(categories) {
 async function loadProducts() {
   catalogStatus.textContent = 'Loading catalogue...';
   try {
-    const response = await fetch(apiUrl('/api/products'), { headers: { Accept: 'application/json' } });
+    const response = await fetch(apiUrl('/api/products'), { headers: { Accept: 'application/json' }, credentials: API_BASE ? 'include' : 'same-origin' });
     if (!response.ok) throw new Error('The catalogue is temporarily unavailable. Please refresh shortly.');
     const data = await response.json();
     state.products = Array.isArray(data.products) ? data.products : [];

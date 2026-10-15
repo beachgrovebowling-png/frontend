@@ -25,7 +25,7 @@ function notify(message, type = 'success') {
 }
 
 async function refreshCsrf() {
-  const response = await fetch(apiUrl('/api/admin/csrf'), { credentials: 'same-origin' });
+  const response = await fetch(apiUrl('/api/admin/csrf'), { credentials: API_BASE ? 'include' : 'same-origin' });
   const data = await response.json(); csrf.token = data.csrfToken || '';
 }
 
@@ -37,10 +37,16 @@ async function api(url, options = {}) {
   if (options.body && !(options.body instanceof FormData) && typeof options.body !== 'string') {
     headers.set('Content-Type', 'application/json'); options.body = JSON.stringify(options.body);
   }
-  let response = await fetch(requestUrl, { ...options, method, headers, credentials: 'same-origin' });
+  const requestConfig = {
+    ...options,
+    method,
+    headers,
+    credentials: API_BASE ? 'include' : 'same-origin'
+  };
+  let response = await fetch(requestUrl, requestConfig);
   if (response.status === 403 && method !== 'GET') {
     await refreshCsrf(); headers.set('X-CSRF-Token', csrf.token);
-    response = await fetch(requestUrl, { ...options, method, headers, credentials: 'same-origin' });
+    response = await fetch(requestUrl, { ...requestConfig, headers });
   }
   if (response.status === 204) return null;
   const type = response.headers.get('content-type') || '';

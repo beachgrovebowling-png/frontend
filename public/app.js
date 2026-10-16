@@ -3,6 +3,7 @@ const API_BASE = String(window.__API_BASE__ || '').replace(/\/$/, '');
 const productGrid = document.querySelector('#product-grid');
 const catalogStatus = document.querySelector('#catalog-status');
 const catalogNotice = document.querySelector('#catalog-notice');
+const retryCatalogue = document.querySelector('#retry-catalogue');
 const emptyState = document.querySelector('#empty-state');
 const productSelect = document.querySelector('#product-select');
 const orderForm = document.querySelector('#order-form');
@@ -58,36 +59,29 @@ function saveCart() {
   renderCart();
 }
 
-function cartItemPrice(product, quantity = 1) {
+function cartItemPrice(product) {
   if (!product) return null;
-  if (String(product.slug || '').toLowerCase() === 'storm-ice-spare-ball') {
-    return quantity >= 2 ? 170 : 100;
-  }
+  if (Number.isFinite(product.salePrice)) return product.salePrice;
   return Number.isFinite(product.price) ? product.price : null;
-}
-
-function cartPriceText(product) {
-  if (String(product.slug || '').toLowerCase() === 'storm-ice-spare-ball') {
-    return 'One ball: $100 USD / Two balls: $170 USD';
-  }
-  const price = Number.isFinite(product.price) ? product.price : null;
-  return Number.isFinite(price) ? `$${price.toFixed(2)} USD` : 'Contact for price';
 }
 
 function priceLabel(product) {
   if (!product) return 'Contact for price';
-  if (String(product.slug || '').toLowerCase() === 'storm-ice-spare-ball') {
-    return '1 for $100 USD / 2 for $170 USD';
-  }
-  return Number.isFinite(product.price) ? `$${product.price.toFixed(2)} USD` : 'Contact for price';
+  const price = cartItemPrice(product);
+  if (!Number.isFinite(price)) return 'Contact for price';
+  return Number.isFinite(product.salePrice) && Number.isFinite(product.price)
+    ? `$${price.toFixed(2)} USD (was $${product.price.toFixed(2)} USD)`
+    : `$${price.toFixed(2)} USD`;
 }
 
 function productVisual(product, dialogImage = false) {
-  if (product.image) {
-    return `<img class="${dialogImage ? '' : 'product-image'}" src="${escapeHtml(product.image)}" alt="${escapeHtml(`${product.brand} ${product.name}`)}" loading="lazy">`;
+  const galleryImage = Array.isArray(product.gallery) ? product.gallery.find(image => image?.url) : null;
+  const imageUrl = product.image || galleryImage?.url;
+  if (imageUrl) {
+    const alt = product.imageAlt || galleryImage?.alt || `${product.brand} ${product.name}`;
+    return `<img class="${dialogImage ? '' : 'product-image'}" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(alt)}" loading="lazy">`;
   }
-  const initials = escapeHtml((product.brand || 'BM').slice(0, 2).toUpperCase());
-  return `<div class="product-placeholder" data-category="${escapeHtml(product.category)}" role="img" aria-label="No product image supplied">${initials}</div>`;
+  return '<div class="product-placeholder" role="img" aria-label="Product image unavailable">Image unavailable</div>';
 }
 
 function visibleProducts() {
@@ -103,6 +97,12 @@ function renderProducts() {
   const products = visibleProducts();
   productGrid.replaceChildren();
   emptyState.hidden = products.length > 0;
+  const noPublishedProducts = state.products.length === 0;
+  document.querySelector('#empty-state-title').textContent = noPublishedProducts ? 'No published products' : 'No matching equipment';
+  document.querySelector('#empty-state-message').textContent = noPublishedProducts
+    ? 'There are no published products available right now.'
+    : 'Try another category or clear your search.';
+  document.querySelector('#clear-filters').hidden = noPublishedProducts;
   products.forEach((product, index) => {
     const card = document.createElement('article');
     card.className = 'product-card';
@@ -126,7 +126,9 @@ function renderProducts() {
     if (image) image.addEventListener('error', () => image.replaceWith(createMissingImageLabel()), { once: true });
     productGrid.append(card);
   });
-  catalogStatus.textContent = `${products.length} ${products.length === 1 ? 'item' : 'items'} shown`;
+  catalogStatus.textContent = noPublishedProducts
+    ? 'No published products are available right now.'
+    : `${products.length} ${products.length === 1 ? 'item' : 'items'} shown`;
 }
 
 function createMissingImageLabel() {
@@ -134,7 +136,7 @@ function createMissingImageLabel() {
   label.className = 'product-placeholder';
   label.setAttribute('role', 'img');
   label.setAttribute('aria-label', 'Product image unavailable');
-  label.textContent = 'BM';
+  label.textContent = 'Image unavailable';
   return label;
 }
 
@@ -163,6 +165,21 @@ function applyPublicSettings(siteData) {
     }
   }
   if (homepage.subtitle) document.querySelector('.hero-description').textContent = homepage.subtitle;
+  const hero = document.querySelector('.hero');
+  const currentHeroImage = hero?.querySelector('.homepage-hero-image');
+  const heroImageUrl = safeLocalOrHttpsUrl(homepage.heroImage);
+  if (hero && homepage.heroImage && heroImageUrl !== '#catalogue') {
+    const heroImage = document.createElement('img');
+    heroImage.className = 'homepage-hero-image';
+    heroImage.alt = '';
+    heroImage.setAttribute('aria-hidden', 'true');
+    heroImage.addEventListener('error', () => heroImage.remove(), { once: true });
+    heroImage.src = heroImageUrl;
+    currentHeroImage?.remove();
+    hero.prepend(heroImage);
+  } else {
+    currentHeroImage?.remove();
+  }
   const contactEmail = String(site.contactEmail || '').trim();
   if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
     const emailShopButton = document.querySelector('#email-shop-button');
@@ -217,31 +234,38 @@ function applyCategoryFilters(categories) {
 }
 
 async function loadProducts() {
+  retryCatalogue.hidden = true;
+  catalogNotice.hidden = true;
+  emptyState.hidden = true;
   catalogStatus.textContent = 'Loading catalogue...';
   try {
-    const response = await fetch(apiUrl('/api/products'), { headers: { Accept: 'application/json' }, credentials: API_BASE ? 'include' : 'same-origin' });
-    if (!response.ok) throw new Error('The catalogue is temporarily unavailable. Please refresh shortly.');
+    const response = await fetch(apiUrl('/api/products'), { cache: 'no-store', headers: { Accept: 'application/json' }, credentials: API_BASE ? 'include' : 'same-origin' });
+    if (!response.ok) throw new Error(`Catalogue request failed with status ${response.status}.`);
     const data = await response.json();
-    state.products = Array.isArray(data.products) ? data.products : [];
+    if (data.databaseConnected !== true || !Array.isArray(data.products)) throw new Error('Catalogue response is invalid or the database is disconnected.');
+    state.products = data.products.filter(product => product && product.status !== 'draft' && product.isStarter !== true);
     state.whatsappConfigured = Boolean(data.whatsappConfigured);
     applyPublicSettings(data.site);
     applyCategoryFilters(data.categories || []);
     populateProductSelect();
-    if (data.catalogMode === 'starter-preview') {
-      catalogNotice.hidden = false;
-      catalogNotice.textContent = 'Preview catalogue: MongoDB is not connected, so product updates are not persistent. The starter item needs verified details before publishing.';
-    }
     if (!state.whatsappConfigured) {
       catalogNotice.hidden = false;
       const nextText = `${catalogNotice.textContent ? `${catalogNotice.textContent} ` : ''}WhatsApp ordering is unavailable until the owner’s complete international number is configured.`;
       catalogNotice.textContent = nextText;
     }
     renderProducts();
+    renderCart();
   } catch (error) {
-    catalogStatus.textContent = error.message;
+    state.products = [];
+    populateProductSelect();
+    catalogStatus.textContent = 'Unable to load products. Please try again.';
     productGrid.replaceChildren();
+    emptyState.hidden = true;
+    retryCatalogue.hidden = false;
   }
 }
+
+retryCatalogue.addEventListener('click', loadProducts);
 
 function showProductDetails(product) {
   const brandElement = document.querySelector('#dialog-brand');
@@ -251,9 +275,31 @@ function showProductDetails(product) {
   document.querySelector('#dialog-description').textContent = product.description;
   document.querySelector('#dialog-availability').textContent = `Availability: ${product.availability === 'available' ? 'Available' : product.availability === 'out-of-stock' ? 'Currently unavailable' : 'Contact store for confirmation'}`;
   const imageArea = document.querySelector('#dialog-image');
-  imageArea.innerHTML = productVisual(product, true);
-  const image = imageArea.querySelector('img');
-  if (image) image.addEventListener('error', () => image.replaceWith(createMissingImageLabel()), { once: true });
+  const galleryArea = document.querySelector('#dialog-gallery');
+  const galleryImages = [
+    ...(product.image ? [{ url: product.image, alt: product.imageAlt || `${product.brand} ${product.name}` }] : []),
+    ...(Array.isArray(product.gallery) ? product.gallery.filter(image => image?.url && image.url !== product.image) : [])
+  ];
+  const renderDialogImage = imageData => {
+    const image = document.createElement('img');
+    image.alt = imageData.alt || `${product.brand} ${product.name}`;
+    image.loading = 'eager';
+    image.addEventListener('error', () => image.replaceWith(createMissingImageLabel()), { once: true });
+    imageArea.replaceChildren(image);
+    image.src = imageData.url;
+  };
+  if (galleryImages.length) renderDialogImage(galleryImages[0]);
+  else imageArea.innerHTML = productVisual(product, true);
+  galleryArea.innerHTML = galleryImages.length > 1 ? galleryImages.map((image, index) => `<button class="dialog-gallery-button${index === 0 ? ' is-active' : ''}" type="button" data-gallery-index="${index}" aria-label="Show product image ${index + 1}" aria-pressed="${index === 0}"><img src="${escapeHtml(image.url)}" alt="" loading="lazy"></button>`).join('') : '';
+  galleryArea.querySelectorAll('[data-gallery-index]').forEach(button => button.addEventListener('click', () => {
+    const index = Number(button.dataset.galleryIndex);
+    renderDialogImage(galleryImages[index]);
+    galleryArea.querySelectorAll('[data-gallery-index]').forEach(item => {
+      const active = item === button;
+      item.classList.toggle('is-active', active);
+      item.setAttribute('aria-pressed', String(active));
+    });
+  }));
 
   const weightChoices = Array.isArray(product.weights) && product.weights.length ? `
     <label class="dialog-field">
@@ -265,11 +311,7 @@ function showProductDetails(product) {
   ` : '';
 
   const dialogContent = document.querySelector('.dialog-copy');
-  const existingOffer = dialogContent.querySelector('.dialog-offer');
-  if (existingOffer) existingOffer.remove();
-  if (product.pricingRule === 'storm-ice-quantity-offer') {
-    dialogContent.insertAdjacentHTML('beforeend', '<p class="dialog-offer">Offer: One ball $100 USD or two balls $170 USD.</p>');
-  }
+  dialogContent.querySelector('.dialog-offer')?.remove();
   const existingWeightSelector = dialogContent.querySelector('#dialog-weight-select');
   if (existingWeightSelector) existingWeightSelector.remove();
   if (weightChoices) {
@@ -296,7 +338,7 @@ function addToCart(productId, weightValue = null, quantity = 1) {
   if (existing) {
     existing.quantity += quantity;
   } else {
-    state.cart.push({ productId: product.id, slug: product.slug, name: product.name, brand: product.brand, price: product.price, weightValue, quantity, cartKey });
+    state.cart.push({ productId: product.id, slug: product.slug, name: product.name, brand: product.brand, price: product.price, salePrice: product.salePrice, weightValue, quantity, cartKey });
   }
   saveCart();
   if (cartDrawer) cartDrawer.classList.add('is-open');
@@ -310,7 +352,7 @@ function removeCartItem(productId, weightValue = null) {
 function renderCart() {
   if (!cartItems) return;
   const total = state.cart.reduce((sum, item) => {
-    const product = state.products.find(entry => entry.id === item.productId || entry.slug === item.productId) || { slug: item.slug, price: item.price };
+    const product = state.products.find(entry => entry.id === item.productId || entry.slug === item.productId) || { slug: item.slug, price: item.price, salePrice: item.salePrice };
     const unitPrice = cartItemPrice(product, item.quantity);
     return sum + (Number.isFinite(unitPrice) ? unitPrice * item.quantity : 0);
   }, 0);
@@ -322,14 +364,14 @@ function renderCart() {
     return;
   }
   state.cart.forEach(item => {
-    const product = state.products.find(entry => entry.id === item.productId || entry.slug === item.productId) || { name: item.name, brand: item.brand, price: item.price, slug: item.slug };
+    const product = state.products.find(entry => entry.id === item.productId || entry.slug === item.productId) || { name: item.name, brand: item.brand, price: item.price, salePrice: item.salePrice, slug: item.slug };
     const row = document.createElement('div');
     row.className = 'cart-item';
     row.innerHTML = `
       <div>
         <strong>${escapeHtml(product.brand || item.brand || 'Product')}</strong>
         <div>${escapeHtml(product.name || item.name || 'Item')}</div>
-        <div class="cart-meta">${item.weightValue ? `Weight: ${escapeHtml(item.weightValue)} lb` : cartPriceText(product)}</div>
+        <div class="cart-meta">${item.weightValue ? `Weight: ${escapeHtml(item.weightValue)} lb` : escapeHtml(priceLabel(product))}</div>
       </div>
       <div class="cart-controls">
         <div class="qty-selector">

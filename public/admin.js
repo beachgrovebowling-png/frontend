@@ -292,24 +292,33 @@ async function uploadFiles(files, target = null) {
   const progress = document.querySelector('#upload-progress'); const bar = progress?.querySelector('span'); const message = document.querySelector('#upload-message');
   if (progress) progress.hidden = false;
   if (message) message.textContent = `Uploading ${files.length} image${files.length > 1 ? 's' : ''}…`;
-  const xhr = new XMLHttpRequest(); xhr.open('POST', apiUrl('/api/admin/media')); xhr.withCredentials = true; xhr.setRequestHeader('X-CSRF-Token', csrf.token);
-  xhr.upload.onprogress = event => { if (event.lengthComputable && bar) bar.style.width = `${Math.round(event.loaded / event.total * 100)}%`; };
-  xhr.onload = async () => {
-    try {
-      const data = JSON.parse(xhr.responseText || '{}');
-      if (xhr.status < 200 || xhr.status >= 300) throw new Error(data.error || 'Upload failed.');
-      if (target === 'image') {
-        const media = data.media[0];
-        updateSelectedImage(media.url, media, 'image');
-        notify('Equipment photo uploaded and attached to this product. Save the product to keep the change.');
-      } else {
-        notify(`${data.media.length} image${data.media.length === 1 ? '' : 's'} uploaded.`);
-        await renderMedia();
-      }
-    } catch (error) { notify(error.message, 'error'); if (message) message.textContent = error.message; }
+  const sendUpload = async retried => {
+    const xhr = new XMLHttpRequest(); xhr.open('POST', apiUrl('/api/admin/media')); xhr.withCredentials = true; xhr.setRequestHeader('X-CSRF-Token', csrf.token);
+    xhr.upload.onprogress = event => { if (event.lengthComputable && bar) bar.style.width = `${Math.round(event.loaded / event.total * 100)}%`; };
+    xhr.onload = async () => {
+      try {
+        const data = JSON.parse(xhr.responseText || '{}');
+        if (xhr.status === 403 && !retried) {
+          await refreshCsrf();
+          if (!csrf.token) throw new Error('Your security token expired. Sign in again and retry the upload.');
+          await sendUpload(true);
+          return;
+        }
+        if (xhr.status < 200 || xhr.status >= 300) throw new Error(data.error || 'Upload failed.');
+        if (target === 'image') {
+          const media = data.media[0];
+          updateSelectedImage(media.url, media, 'image');
+          notify('Equipment photo uploaded and attached to this product. Save the product to keep the change.');
+        } else {
+          notify(`${data.media.length} image${data.media.length === 1 ? '' : 's'} uploaded.`);
+          await renderMedia();
+        }
+      } catch (error) { notify(error.message, 'error'); if (message) message.textContent = error.message; }
+    };
+    xhr.onerror = () => notify('Upload failed because the network connection was interrupted.', 'error');
+    xhr.send(form);
   };
-  xhr.onerror = () => notify('Upload failed because the network connection was interrupted.', 'error');
-  xhr.send(form);
+  await sendUpload(false);
 }
 
 function askConfirm(copy, action) {

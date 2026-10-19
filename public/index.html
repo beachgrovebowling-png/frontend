@@ -102,10 +102,11 @@
         </div>
         <p class="form-feedback" id="form-feedback" role="status" aria-live="polite"></p>
         <div class="order-now-wrap">
-          <button class="button button-orange submit-button" id="order-submit-button" type="submit" aria-haspopup="true" aria-expanded="false">Order Now <span aria-hidden="true">↗</span></button>
+            <button class="button button-orange submit-button" id="order-submit-button" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="order-channel-menu">Order Now <span aria-hidden="true">↗</span></button>
           <div class="order-menu" id="order-channel-menu" role="group" aria-label="Choose how to send your order" hidden>
-            <a class="order-menu-option" id="order-whatsapp-link" href="#" target="_blank" rel="noopener noreferrer" hidden>Order on WhatsApp</a>
-            <a class="order-menu-option" id="order-email-link" href="#" hidden>Order on Email</a>
+              <button class="order-menu-option" id="order-site-option" type="submit">Order on Site (Required)</button>
+              <a class="order-menu-option is-disabled" id="order-whatsapp-link" href="#" target="_blank" rel="noopener noreferrer" aria-disabled="true">Order on WhatsApp</a>
+              <a class="order-menu-option is-disabled" id="order-email-link" href="#" aria-disabled="true">Order on Email</a>
           </div>
         </div>
         <p class="form-footnote">Your request goes to the store dashboard. The store will confirm availability and next steps.</p>

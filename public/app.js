@@ -8,6 +8,9 @@ const emptyState = document.querySelector('#empty-state');
 const productSelect = document.querySelector('#product-select');
 const orderForm = document.querySelector('#order-form');
 if (orderForm) orderForm.action = apiUrl('/api/orders');
+const orderNowButton = document.querySelector('#order-submit-button');
+const orderMenu = document.querySelector('#order-channel-menu');
+const orderSiteOption = document.querySelector('#order-site-option');
 const formFeedback = document.querySelector('#form-feedback');
 const dialog = document.querySelector('#product-dialog');
 const cartDrawer = document.querySelector('#cart-drawer');
@@ -499,6 +502,17 @@ document.querySelector('#clear-filters').addEventListener('click', () => {
   if (button) handleSelectCategory(button);
 });
 
+orderNowButton.addEventListener('click', () => {
+  orderMenu.hidden = !orderMenu.hidden;
+  orderNowButton.setAttribute('aria-expanded', String(!orderMenu.hidden));
+});
+
+document.querySelectorAll('#order-whatsapp-link, #order-email-link').forEach(link => {
+  link.addEventListener('click', event => {
+    if (link.getAttribute('aria-disabled') === 'true') event.preventDefault();
+  });
+});
+
 orderForm.addEventListener('submit', event => {
   event.preventDefault();
   formFeedback.textContent = '';
@@ -508,8 +522,7 @@ orderForm.addEventListener('submit', event => {
     formFeedback.textContent = 'Choose a quantity from 1 to 50.';
     return;
   }
-  const button = orderForm.querySelector('[type="submit"]');
-  const orderMenu = document.querySelector('#order-channel-menu');
+  const button = orderSiteOption;
   const whatsappLink = document.querySelector('#order-whatsapp-link');
   const emailLink = document.querySelector('#order-email-link');
   const payload = Object.fromEntries(new FormData(orderForm).entries());
@@ -537,25 +550,28 @@ orderForm.addEventListener('submit', event => {
       ...(payload.requirements ? [`Notes: ${payload.requirements}`] : [])
     ].join('\n');
     const number = String(result.whatsappNumber || state.whatsappNumber || '').replace(/\D/g, '');
-    whatsappLink.hidden = !number;
+    whatsappLink.classList.toggle('is-disabled', !number);
+    whatsappLink.setAttribute('aria-disabled', String(!number));
     if (number) whatsappLink.href = `https://wa.me/${number}?text=${encodeURIComponent(`Hello, I submitted an order request.\n\n${details}`)}`;
     const email = String(result.contactEmail || state.contactEmail || '').trim();
-    emailLink.hidden = !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    if (!emailLink.hidden) emailLink.href = `mailto:${email}?subject=${encodeURIComponent(`Order request ${result.reference}`)}&body=${encodeURIComponent(details)}`;
-    button.type = 'button';
-    button.setAttribute('aria-expanded', 'true');
-    button.addEventListener('click', () => {
-      orderMenu.hidden = !orderMenu.hidden;
-      button.setAttribute('aria-expanded', String(!orderMenu.hidden));
-    });
+    const emailConfigured = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    emailLink.classList.toggle('is-disabled', !emailConfigured);
+    emailLink.setAttribute('aria-disabled', String(!emailConfigured));
+    if (emailConfigured) emailLink.href = `mailto:${email}?subject=${encodeURIComponent(`Order request ${result.reference}`)}&body=${encodeURIComponent(details)}`;
     orderForm.querySelectorAll('input, select, textarea').forEach(field => { field.disabled = true; });
+    button.disabled = true;
+    button.dataset.completed = 'true';
+    button.textContent = 'Order on Site Complete';
+    orderNowButton.setAttribute('aria-expanded', 'true');
     orderMenu.hidden = false;
-    formFeedback.textContent = `Request ${result.reference} is recorded. Choose WhatsApp or email to send the order details.`;
+    formFeedback.textContent = `Request ${result.reference} is recorded on the site. Choose WhatsApp or email to send the same order details.`;
   }).catch(error => {
     formFeedback.textContent = error.message;
   }).finally(() => {
-    button.disabled = false;
-    button.innerHTML = 'Order now <span aria-hidden="true">↗</span>';
+    if (button.dataset.completed !== 'true') {
+      button.disabled = false;
+      button.textContent = 'Order on Site (Required)';
+    }
   });
 });
 

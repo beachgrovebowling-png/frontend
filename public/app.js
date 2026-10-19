@@ -509,13 +509,13 @@ orderForm.addEventListener('submit', event => {
     return;
   }
   const button = orderForm.querySelector('[type="submit"]');
-  const followup = document.querySelector('#order-followup');
+  const orderMenu = document.querySelector('#order-channel-menu');
   const whatsappLink = document.querySelector('#order-whatsapp-link');
   const emailLink = document.querySelector('#order-email-link');
   const payload = Object.fromEntries(new FormData(orderForm).entries());
   button.disabled = true;
   button.textContent = 'Sending request...';
-  followup.hidden = true;
+  orderMenu.hidden = true;
   fetch(apiUrl('/api/orders'), {
     method: 'POST',
     cache: 'no-store',
@@ -531,6 +531,7 @@ orderForm.addEventListener('submit', event => {
       `Phone: ${payload.customerPhone}`,
       ...(payload.email ? [`Email: ${payload.email}`] : []),
       `Product: ${product ? `${product.brand} ${product.name}` : payload.productId}`,
+      `Price: ${product ? priceLabel(product) : 'Contact for price'}`,
       `Quantity: ${payload.quantity}`,
       `Preferred payment: ${payload.paymentMethod}`,
       ...(payload.requirements ? [`Notes: ${payload.requirements}`] : [])
@@ -541,19 +542,21 @@ orderForm.addEventListener('submit', event => {
     const email = String(result.contactEmail || state.contactEmail || '').trim();
     emailLink.hidden = !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     if (!emailLink.hidden) emailLink.href = `mailto:${email}?subject=${encodeURIComponent(`Order request ${result.reference}`)}&body=${encodeURIComponent(details)}`;
-    document.querySelector('#order-followup-message').textContent = `Request ${result.reference} was sent to the store. The store will confirm availability and next steps.`;
-    followup.hidden = false;
-    formFeedback.textContent = 'Your request is recorded. You can also contact the shop by WhatsApp or email.';
+    button.type = 'button';
+    button.setAttribute('aria-expanded', 'true');
+    button.addEventListener('click', () => {
+      orderMenu.hidden = !orderMenu.hidden;
+      button.setAttribute('aria-expanded', String(!orderMenu.hidden));
+    });
+    orderForm.querySelectorAll('input, select, textarea').forEach(field => { field.disabled = true; });
+    orderMenu.hidden = false;
+    formFeedback.textContent = `Request ${result.reference} is recorded. Choose WhatsApp or email to send the order details.`;
   }).catch(error => {
     formFeedback.textContent = error.message;
   }).finally(() => {
     button.disabled = false;
     button.innerHTML = 'Order now <span aria-hidden="true">↗</span>';
   });
-});
-
-orderForm.addEventListener('input', () => {
-  document.querySelector('#order-followup').hidden = true;
 });
 
 cartToggle.addEventListener('click', () => {

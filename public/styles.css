@@ -164,10 +164,12 @@ button { color: inherit; }
 .form-feedback { min-height: 18px; margin: 11px 0 3px; color: #9d3d22; font-size: 10px; }
 .form-feedback:empty { margin: 3px 0; }
 .submit-button { min-width: 220px; }
+.order-now-wrap { position: relative; display: inline-block; }
+.order-menu { position: absolute; top: calc(100% + 8px); left: 0; z-index: 20; display: flex; flex-direction: column; gap: 6px; min-width: 205px; padding: 9px; background: #fff; border: 1px solid var(--line); box-shadow: 0 10px 24px rgba(15,23,42,.16); }
+.order-menu[hidden] { display: none; }
+.order-menu-option { display: block; width: 100%; padding: 11px 12px; border: 1px solid var(--line); background: #f7f8f8; color: var(--ink); text-align: left; font-size: 11px; font-weight: 700; cursor: pointer; }
+.order-menu-option:hover { background: #edf1f2; }
 .form-footnote { margin: 13px 0 0; color: #5d6979; line-height: 1.6; font-size: 9px; }
-.order-followup[hidden] { display: none; }
-.order-followup { margin-top: 12px; padding-top: 12px; border-top: 1px solid #d8dfe5; }
-.order-followup > p { margin: 0; color: #385b43; font-size: 11px; line-height: 1.6; }
 .payment-note { margin: 10px 0 0; padding-top: 11px; border-top: 1px solid #d8dfe5; color: #5d6979; font-size: 10px; line-height: 1.6; }
 .payment-note strong { color: var(--ink); }
 .site-footer { min-height: 92px; background: #0a1018; color: white; padding: 20px 6.2vw; display: flex; align-items: center; justify-content: space-between; gap: 18px; }

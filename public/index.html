@@ -101,15 +101,14 @@
           <label class="field field-full"><span>Anything else? <small>Optional</small></span><textarea name="requirements" rows="3" maxlength="500" placeholder="Fit, weight, preferences or questions"></textarea></label>
         </div>
         <p class="form-feedback" id="form-feedback" role="status" aria-live="polite"></p>
-        <button class="button button-orange submit-button" type="submit">Order now <span aria-hidden="true">↗</span></button>
-        <p class="form-footnote">Your request goes to the store dashboard. The store will confirm availability and next steps.</p>
-        <div class="order-followup" id="order-followup" hidden>
-          <p id="order-followup-message" role="status" aria-live="polite"></p>
-          <div class="contact-actions">
-            <a class="button button-orange" id="order-whatsapp-link" href="#" target="_blank" rel="noopener noreferrer" hidden>Message on WhatsApp <span aria-hidden="true">↗</span></a>
-            <a class="text-button" id="order-email-link" href="#" hidden>Email the shop</a>
+        <div class="order-now-wrap">
+          <button class="button button-orange submit-button" id="order-submit-button" type="submit" aria-haspopup="true" aria-expanded="false">Order Now <span aria-hidden="true">↗</span></button>
+          <div class="order-menu" id="order-channel-menu" role="group" aria-label="Choose how to send your order" hidden>
+            <a class="order-menu-option" id="order-whatsapp-link" href="#" target="_blank" rel="noopener noreferrer" hidden>Order on WhatsApp</a>
+            <a class="order-menu-option" id="order-email-link" href="#" hidden>Order on Email</a>
           </div>
         </div>
+        <p class="form-footnote">Your request goes to the store dashboard. The store will confirm availability and next steps.</p>
         <p class="payment-note"><strong>Payment options:</strong> Zelle, Chime, Apple Pay, and Cash App. The shop will provide payment details after confirming your order.</p>
       </form>
     </section>

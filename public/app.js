@@ -1,4 +1,4 @@
-const state = { products: [], category: 'all', query: '', whatsappConfigured: false, cart: loadCart() };
+const state = { products: [], category: 'all', query: '', whatsappConfigured: false, whatsappNumber: '', contactEmail: '', cart: loadCart() };
 const API_BASE = String(window.__API_BASE__ || '').replace(/\/$/, '');
 const productGrid = document.querySelector('#product-grid');
 const catalogStatus = document.querySelector('#catalog-status');
@@ -7,7 +7,7 @@ const retryCatalogue = document.querySelector('#retry-catalogue');
 const emptyState = document.querySelector('#empty-state');
 const productSelect = document.querySelector('#product-select');
 const orderForm = document.querySelector('#order-form');
-if (orderForm) orderForm.action = apiUrl('/api/orders/whatsapp');
+if (orderForm) orderForm.action = apiUrl('/api/orders');
 const formFeedback = document.querySelector('#form-feedback');
 const dialog = document.querySelector('#product-dialog');
 const cartDrawer = document.querySelector('#cart-drawer');
@@ -181,6 +181,7 @@ function applyPublicSettings(siteData) {
     currentHeroImage?.remove();
   }
   const contactEmail = String(site.contactEmail || '').trim();
+  state.contactEmail = contactEmail;
   if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
     const emailShopButton = document.querySelector('#email-shop-button');
     const mailto = `mailto:${contactEmail}`;
@@ -188,6 +189,13 @@ function applyPublicSettings(siteData) {
       emailShopButton.href = mailto;
       emailShopButton.setAttribute('aria-label', `Email the shop at ${contactEmail}`);
     }
+  }
+  const whatsappNumber = String(site.whatsappNumber || '').replace(/\D/g, '');
+  state.whatsappNumber = whatsappNumber;
+  const whatsappContactButton = document.querySelector('#whatsapp-contact-button');
+  if (whatsappContactButton) {
+    whatsappContactButton.hidden = !whatsappNumber;
+    if (whatsappNumber) whatsappContactButton.href = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent('Hello, I have a question about bowling equipment.')}`;
   }
   if (siteData.seo?.title) document.title = siteData.seo.title;
   if (site.name) {
@@ -492,23 +500,60 @@ document.querySelector('#clear-filters').addEventListener('click', () => {
 });
 
 orderForm.addEventListener('submit', event => {
+  event.preventDefault();
   formFeedback.textContent = '';
-  if (!orderForm.reportValidity()) {
-    event.preventDefault();
-    return;
-  }
+  if (!orderForm.reportValidity()) return;
   const quantity = Number(orderForm.elements.quantity.value);
   if (!Number.isInteger(quantity) || quantity < 1 || quantity > 50) {
-    event.preventDefault();
     formFeedback.textContent = 'Choose a quantity from 1 to 50.';
     return;
   }
-  if (!state.whatsappConfigured) {
-    event.preventDefault();
-    formFeedback.textContent = 'The store WhatsApp number is not configured yet. Please contact the owner through another channel.';
-    return;
-  }
-  formFeedback.textContent = 'WhatsApp is opening. Review the draft and send it to enquire; this is not an order confirmation.';
+  const button = orderForm.querySelector('[type="submit"]');
+  const followup = document.querySelector('#order-followup');
+  const whatsappLink = document.querySelector('#order-whatsapp-link');
+  const emailLink = document.querySelector('#order-email-link');
+  const payload = Object.fromEntries(new FormData(orderForm).entries());
+  button.disabled = true;
+  button.textContent = 'Sending request...';
+  followup.hidden = true;
+  fetch(apiUrl('/api/orders'), {
+    method: 'POST',
+    cache: 'no-store',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  }).then(async response => {
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Could not send your order request. Please try again.');
+    const product = state.products.find(item => item.id === payload.productId);
+    const details = [
+      `Order request ${result.reference}`,
+      `Customer: ${payload.customerName}`,
+      `Phone: ${payload.customerPhone}`,
+      ...(payload.email ? [`Email: ${payload.email}`] : []),
+      `Product: ${product ? `${product.brand} ${product.name}` : payload.productId}`,
+      `Quantity: ${payload.quantity}`,
+      `Preferred payment: ${payload.paymentMethod}`,
+      ...(payload.requirements ? [`Notes: ${payload.requirements}`] : [])
+    ].join('\n');
+    const number = String(result.whatsappNumber || state.whatsappNumber || '').replace(/\D/g, '');
+    whatsappLink.hidden = !number;
+    if (number) whatsappLink.href = `https://wa.me/${number}?text=${encodeURIComponent(`Hello, I submitted an order request.\n\n${details}`)}`;
+    const email = String(result.contactEmail || state.contactEmail || '').trim();
+    emailLink.hidden = !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    if (!emailLink.hidden) emailLink.href = `mailto:${email}?subject=${encodeURIComponent(`Order request ${result.reference}`)}&body=${encodeURIComponent(details)}`;
+    document.querySelector('#order-followup-message').textContent = `Request ${result.reference} was sent to the store. The store will confirm availability and next steps.`;
+    followup.hidden = false;
+    formFeedback.textContent = 'Your request is recorded. You can also contact the shop by WhatsApp or email.';
+  }).catch(error => {
+    formFeedback.textContent = error.message;
+  }).finally(() => {
+    button.disabled = false;
+    button.innerHTML = 'Order now <span aria-hidden="true">↗</span>';
+  });
+});
+
+orderForm.addEventListener('input', () => {
+  document.querySelector('#order-followup').hidden = true;
 });
 
 cartToggle.addEventListener('click', () => {

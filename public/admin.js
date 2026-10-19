@@ -154,7 +154,7 @@ function productForm(product = {}) {
       <label class="setting-field">Availability<select name="availability" class="admin-select">${[['contact','Contact for availability'],['available','In stock (verified)'],['out-of-stock','Out of stock']].map(([v,l]) => `<option value="${v}" ${(product.availability || 'contact') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
       ${field('seoTitle', 'SEO title', product.seoTitle)}${field('seoDescription', 'SEO description', product.seoDescription)}
     </div></div><div class="form-actions"><button class="admin-button secondary" type="button" data-go="products">Cancel</button><button class="admin-button secondary" type="submit" name="status" value="draft">Save draft</button><button class="admin-button primary" type="submit" name="status" value="published">${isEdit ? 'Save changes' : 'Publish product'}</button></div></div></section>
-    <aside class="editor-side"><section class="panel"><div class="panel-heading"><h2>Publication</h2></div><div class="panel-body"><label class="check-row"><input name="featured" type="checkbox" ${product.featured ? 'checked' : ''}> Featured product</label><p class="table-sub">Current status: ${escapeHtml(product.status || 'published')}</p></div></section><section class="panel"><div class="panel-heading"><h2>Equipment photo</h2></div><div class="panel-body"><input type="hidden" name="image" value="${escapeHtml(product.image || '')}"><label class="setting-field">Image alt text<input class="admin-input" name="imageAlt" maxlength="240" value="${escapeHtml(product.imageAlt || '')}"></label><div class="image-slot" id="product-image-preview">${product.image ? `<img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.imageAlt || '')}">` : '<span class="image-empty">No image selected</span>'}</div><label class="small-button upload-button">Upload equipment photo<input id="product-image-file-input" type="file" accept="image/jpeg,image/png,image/webp,image/avif" hidden></label><button class="small-button" type="button" data-pick-image="image">Choose from media</button></div></section><section class="panel"><div class="panel-heading"><h2>Gallery</h2></div><div class="panel-body"><input type="hidden" name="gallery" value="${escapeHtml(JSON.stringify(product.gallery || []))}"><div id="gallery-preview" class="media-meta">${(product.gallery || []).map(item => `<img src="${escapeHtml(item.url)}" alt="${escapeHtml(item.alt)}" style="width:66px;height:60px;object-fit:cover">`).join('')}</div><button class="small-button" type="button" data-pick-image="gallery">Add gallery image</button></div></section></aside></div></form>`;
+    <aside class="editor-side"><section class="panel"><div class="panel-heading"><h2>Publication</h2></div><div class="panel-body"><label class="check-row"><input name="featured" type="checkbox" ${product.featured ? 'checked' : ''}> Featured product</label><p class="table-sub">Current status: ${escapeHtml(product.status || 'published')}</p></div></section><section class="panel"><div class="panel-heading"><h2>Equipment photo</h2></div><div class="panel-body"><input type="hidden" name="image" value="${escapeHtml(product.image || '')}"><label class="setting-field">Image alt text<input class="admin-input" name="imageAlt" maxlength="240" value="${escapeHtml(product.imageAlt || '')}"></label><div class="image-slot" id="product-image-preview">${product.image ? `<img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.imageAlt || '')}">` : '<span class="image-empty">No image selected</span>'}</div><label class="small-button upload-button">Upload equipment photo<input id="product-image-file-input" type="file" accept="image/jpeg,image/png,image/webp,image/avif" hidden></label><button class="small-button" type="button" data-pick-image="image">Choose from media</button></div></section><section class="panel"><div class="panel-heading"><h2>Gallery</h2></div><div class="panel-body"><input type="hidden" name="gallery" value="${escapeHtml(JSON.stringify(product.gallery || []))}"><div id="gallery-preview" class="media-meta">${(product.gallery || []).map((item, index) => `<span class="gallery-preview-item"><img src="${escapeHtml(item.url)}" alt="${escapeHtml(item.alt)}"><button type="button" class="small-button" data-remove-gallery="${index}" aria-label="Remove gallery photo ${index + 1}">Remove</button></span>`).join('')}</div><label class="small-button upload-button">Upload gallery photos<input id="product-gallery-file-input" type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple hidden></label><button class="small-button" type="button" data-pick-image="gallery">Add from media library</button><p class="table-sub">Select multiple photos at once. Up to 12 gallery photos per product.</p></div></section></aside></div></form>`;
 }
 
 function field(name, label, value = '', required = false, type = 'text', hint = '') {
@@ -237,12 +237,37 @@ function updateSelectedImage(url, media, target) {
     const preview = document.querySelector(`#${target}-preview`);
     if (preview) preview.innerHTML = `<img src="${escapeHtml(url)}" alt="${target === 'siteLogo' ? 'Logo preview' : 'Favicon preview'}">`;
   } else if (target === 'gallery') {
-    const form = document.querySelector('#product-form'); let gallery = []; try { gallery = JSON.parse(form.elements.gallery.value); } catch {}
-    if (!gallery.some(item => item.url === url)) gallery.push({ url, alt: media.alt || media.filename });
-    form.elements.gallery.value = JSON.stringify(gallery);
-    document.querySelector('#gallery-preview').insertAdjacentHTML('beforeend', `<img src="${escapeHtml(url)}" alt="${escapeHtml(media.alt || media.filename)}" style="width:66px;height:60px;object-fit:cover">`);
+    const form = document.querySelector('#product-form');
+    const gallery = readProductGallery(form);
+    if (gallery.length >= 12) {
+      notify('A product can have up to 12 gallery photos.', 'error');
+    } else if (!gallery.some(item => item.url === url)) {
+      gallery.push({ url, alt: media.alt || media.filename });
+      saveProductGallery(form, gallery);
+    }
   }
   mediaPicker.close();
+}
+
+function readProductGallery(form = document.querySelector('#product-form')) {
+  try { return JSON.parse(form.elements.gallery.value || '[]'); } catch { return []; }
+}
+
+function saveProductGallery(form, gallery) {
+  form.elements.gallery.value = JSON.stringify(gallery);
+  document.querySelector('#gallery-preview').innerHTML = gallery.map((item, index) => `<span class="gallery-preview-item" style="display:inline-flex;flex-direction:column;gap:4px;vertical-align:top;margin:0 8px 8px 0"><img src="${escapeHtml(item.url)}" alt="${escapeHtml(item.alt)}" style="width:66px;height:60px;object-fit:cover"><button type="button" class="small-button" data-remove-gallery="${index}" aria-label="Remove gallery photo ${index + 1}">Remove</button></span>`).join('');
+}
+
+function addProductGalleryMedia(mediaItems) {
+  const form = document.querySelector('#product-form');
+  if (!form) return;
+  const gallery = readProductGallery(form);
+  const newItems = mediaItems.filter(media => media?.url && !gallery.some(item => item.url === media.url));
+  const availableSlots = Math.max(0, 12 - gallery.length);
+  gallery.push(...newItems.slice(0, availableSlots).map(media => ({ url: media.url, alt: media.alt || media.title || media.filename })));
+  saveProductGallery(form, gallery);
+  if (newItems.length > availableSlots) notify('Only the first photos that fit within the 12-photo gallery limit were attached.', 'error');
+  else notify(`${Math.min(newItems.length, availableSlots)} photo${Math.min(newItems.length, availableSlots) === 1 ? '' : 's'} attached to this product. Save the product to keep the changes.`);
 }
 
 async function openMediaPicker(target) {
@@ -305,7 +330,9 @@ async function uploadFiles(files, target = null) {
           return;
         }
         if (xhr.status < 200 || xhr.status >= 300) throw new Error(data.error || 'Upload failed.');
-        if (target === 'image') {
+        if (target === 'gallery') {
+          addProductGalleryMedia(data.media);
+        } else if (target === 'image') {
           const media = data.media[0];
           updateSelectedImage(media.url, media, 'image');
           notify('Equipment photo uploaded and attached to this product. Save the product to keep the change.');
@@ -435,9 +462,18 @@ async function handleClick(event) {
 
 document.addEventListener('submit', handleSubmit);
 document.addEventListener('click', event => { handleClick(event).catch(error => notify(error.message, 'error')); });
+document.addEventListener('click', event => {
+  const removeButton = event.target.closest('[data-remove-gallery]');
+  if (!removeButton) return;
+  const form = document.querySelector('#product-form');
+  const gallery = readProductGallery(form);
+  gallery.splice(Number(removeButton.dataset.removeGallery), 1);
+  saveProductGallery(form, gallery);
+});
 document.addEventListener('change', event => {
   if (event.target.id === 'media-file-input' || event.target.id === 'media-drop-input') uploadFiles(event.target.files);
   if (event.target.id === 'product-image-file-input') uploadFiles(event.target.files, 'image');
+  if (event.target.id === 'product-gallery-file-input') uploadFiles(event.target.files, 'gallery');
   if (event.target.id === 'select-all') document.querySelectorAll('.product-check').forEach(input => { input.checked = event.target.checked; });
   if (event.target.matches('[data-media-replace]') && event.target.files?.[0]) {
     const form = new FormData(); form.append('image', event.target.files[0]);

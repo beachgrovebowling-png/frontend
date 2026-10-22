@@ -510,13 +510,30 @@ orderNowButton.addEventListener('click', () => {
 
 productSelect.addEventListener('change', () => {
   if (!productSelect.value || orderSiteOption.dataset.completed === 'true') return;
+  const whatsappLink = document.querySelector('#order-whatsapp-link');
+  const emailLink = document.querySelector('#order-email-link');
+  const whatsappAvailable = Boolean(state.whatsappNumber);
+  const emailAvailable = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.contactEmail);
+  whatsappLink.classList.toggle('is-disabled', !whatsappAvailable);
+  whatsappLink.setAttribute('aria-disabled', String(!whatsappAvailable));
+  emailLink.classList.toggle('is-disabled', !emailAvailable);
+  emailLink.setAttribute('aria-disabled', String(!emailAvailable));
   orderMenu.hidden = false;
   orderNowButton.setAttribute('aria-expanded', 'true');
 });
 
 document.querySelectorAll('#order-whatsapp-link, #order-email-link').forEach(link => {
   link.addEventListener('click', event => {
-    if (link.getAttribute('aria-disabled') === 'true') event.preventDefault();
+    if (link.getAttribute('aria-disabled') === 'true') {
+      event.preventDefault();
+      return;
+    }
+    if (orderSiteOption.dataset.completed === 'true') return;
+    event.preventDefault();
+    if (state.pendingOrderChannel) return;
+    const popup = window.open('', '_blank');
+    state.pendingOrderChannel = { type: link.id === 'order-whatsapp-link' ? 'whatsapp' : 'email', popup };
+    orderForm.requestSubmit(orderSiteOption);
   });
 });
 
@@ -571,8 +588,24 @@ orderForm.addEventListener('submit', event => {
     button.textContent = 'Order on Site Complete';
     orderNowButton.setAttribute('aria-expanded', 'true');
     orderMenu.hidden = false;
-    formFeedback.textContent = `Request ${result.reference} is recorded on the site. Choose WhatsApp or email to send the same order details.`;
+    const pendingChannel = state.pendingOrderChannel;
+    state.pendingOrderChannel = null;
+    if (pendingChannel) {
+      const channelLink = pendingChannel.type === 'whatsapp' ? whatsappLink : emailLink;
+      if (channelLink.getAttribute('aria-disabled') === 'false') {
+        if (pendingChannel.popup) pendingChannel.popup.location.href = channelLink.href;
+        else window.location.href = channelLink.href;
+        formFeedback.textContent = `Request ${result.reference} is recorded on the site. Your order details are ready in ${pendingChannel.type === 'whatsapp' ? 'WhatsApp' : 'email'}.`;
+      } else {
+        pendingChannel.popup?.close();
+        formFeedback.textContent = `Request ${result.reference} is recorded on the site, but the selected contact channel is not configured.`;
+      }
+    } else {
+      formFeedback.textContent = `Request ${result.reference} is recorded on the site. Choose WhatsApp or email to send the same order details.`;
+    }
   }).catch(error => {
+    state.pendingOrderChannel?.popup?.close();
+    state.pendingOrderChannel = null;
     formFeedback.textContent = error.message;
   }).finally(() => {
     if (button.dataset.completed !== 'true') {

@@ -482,6 +482,7 @@ productGrid.addEventListener('click', event => {
   }
   if (orderButton) {
     productSelect.value = orderButton.dataset.order;
+    productSelect.dispatchEvent(new Event('change', { bubbles: true }));
     document.querySelector('#order').scrollIntoView({ behavior: 'smooth' });
     productSelect.focus({ preventScroll: true });
   } else if (detailsButton) {
@@ -505,6 +506,12 @@ document.querySelector('#clear-filters').addEventListener('click', () => {
 orderNowButton.addEventListener('click', () => {
   orderMenu.hidden = !orderMenu.hidden;
   orderNowButton.setAttribute('aria-expanded', String(!orderMenu.hidden));
+});
+
+productSelect.addEventListener('change', () => {
+  if (!productSelect.value || orderSiteOption.dataset.completed === 'true') return;
+  orderMenu.hidden = false;
+  orderNowButton.setAttribute('aria-expanded', 'true');
 });
 
 document.querySelectorAll('#order-whatsapp-link, #order-email-link').forEach(link => {
@@ -603,6 +610,7 @@ cartSubmit.addEventListener('click', () => {
   }
   const firstItem = state.cart[0];
   productSelect.value = firstItem.productId;
+  productSelect.dispatchEvent(new Event('change', { bubbles: true }));
   orderForm.elements.quantity.value = firstItem.quantity;
   document.querySelector('#order').scrollIntoView({ behavior: 'smooth' });
   formFeedback.textContent = 'Cart items are ready for enquiry. Review details and continue to WhatsApp.';

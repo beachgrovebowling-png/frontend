@@ -509,7 +509,7 @@ orderNowButton.addEventListener('click', () => {
 });
 
 productSelect.addEventListener('change', () => {
-  if (!productSelect.value) return;
+  if (!productSelect.value || orderSiteOption.dataset.completed === 'true') return;
   const whatsappLink = document.querySelector('#order-whatsapp-link');
   const emailLink = document.querySelector('#order-email-link');
   const whatsappAvailable = Boolean(state.whatsappNumber);

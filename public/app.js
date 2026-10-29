@@ -524,13 +524,19 @@ productSelect.addEventListener('change', () => {
 
 
 document.querySelectorAll('#order-whatsapp-link, #order-email-link').forEach(link => {
-  link.addEventListener('click', event => {
-    if (link.getAttribute('aria-disabled') === 'true') {
-      event.preventDefault();
-    }
-  });
+link.addEventListener('click', event => {
+if (link.getAttribute('aria-disabled') === 'true') {
+event.preventDefault();
+return;
+}
+if (orderSiteOption.dataset.completed === 'true') return;
+event.preventDefault();
+if (state.pendingOrderChannel) return;
+const popup = window.open('', '_blank');
+state.pendingOrderChannel = { type: link.id === 'order-whatsapp-link' ? 'whatsapp' : 'email', popup };
+orderForm.requestSubmit(orderSiteOption);
 });
-
+})
 
 orderForm.addEventListener('submit', event => {
   event.preventDefault();

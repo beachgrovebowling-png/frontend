@@ -100,12 +100,9 @@
           <label class="field field-full"><span>Anything else? <small>Optional</small></span><textarea name="requirements" rows="3" maxlength="500" placeholder="Fit, weight, preferences or questions"></textarea></label>
         </div>
         <p class="form-feedback" id="form-feedback" role="status" aria-live="polite"></p>
-        <div class="order-now-wrap">
-          <button class="button button-orange submit-button order-now-button" id="order-submit-button" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="order-now-menu">Order Now <span aria-hidden="true">↗</span></button>
-          <div class="order-menu" id="order-now-menu" hidden>
-            <button class="order-menu-option" type="button" data-order-action="whatsapp">Order on WhatsApp</button>
-            <button class="order-menu-option" type="button" data-order-action="email">Order by Email</button>
-          </div>
+        <div class="order-channel-actions" role="group" aria-label="Choose how to send your order">
+          <button class="button button-orange" type="button" data-order-action="whatsapp">Send by WhatsApp <span aria-hidden="true">↗</span></button>
+          <button class="button button-orange" type="button" data-order-action="email">Send by Email <span aria-hidden="true">↗</span></button>
         </div>
         <p class="form-footnote">Choose WhatsApp or email to send your enquiry. The shop will confirm availability and order details with you.</p>
         <p class="payment-note"><strong>Payment options:</strong> Zelle, Chime, Apple Pay, and Cash App. The shop will provide payment details after confirming your order.</p>

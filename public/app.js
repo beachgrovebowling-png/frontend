@@ -8,7 +8,6 @@ const emptyState = document.querySelector('#empty-state');
 const productSelect = document.querySelector('#product-select');
 const orderForm = document.querySelector('#order-form');
 if (orderForm) orderForm.action = apiUrl('/api/orders');
-const orderSubmitButton = document.querySelector('#order-submit-button');
 const formFeedback = document.querySelector('#form-feedback');
 const orderMenus = document.querySelectorAll('.order-menu');
 const orderNowButtons = document.querySelectorAll('.order-now-button');
@@ -558,6 +557,7 @@ async function handleDirectOrderAction(type, contactOnly = false) {
     return;
   }
   if (!state.submittedOrder && !orderForm.reportValidity()) return;
+  let whatsappWindow = null;
   if (!state.submittedOrder) {
     const quantity = Number(orderForm.elements.quantity.value);
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > 50) {
@@ -566,13 +566,21 @@ async function handleDirectOrderAction(type, contactOnly = false) {
     }
     formFeedback.textContent = 'Recording your enquiry…';
     const formData = new FormData(orderForm);
-    const response = await fetch(apiUrl('/api/orders'), {
-      method: 'POST',
-      headers: { Accept: 'application/json' },
-      body: new URLSearchParams(formData)
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || 'Your order could not be submitted right now.');
+    whatsappWindow = type === 'whatsapp' ? window.open('about:blank', '_blank') : null;
+    if (whatsappWindow) whatsappWindow.opener = null;
+    let data;
+    try {
+      const response = await fetch(apiUrl('/api/orders'), {
+        method: 'POST',
+        headers: { Accept: 'application/json' },
+        body: new URLSearchParams(formData)
+      });
+      data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Your order could not be submitted right now.');
+    } catch (error) {
+      whatsappWindow?.close();
+      throw error;
+    }
     state.whatsappConfigured = Boolean(data.whatsappNumber);
     if (data.whatsappNumber) state.whatsappNumber = String(data.whatsappNumber).trim();
     if (data.contactEmail) state.contactEmail = String(data.contactEmail).trim();
@@ -613,7 +621,14 @@ async function handleDirectOrderAction(type, contactOnly = false) {
   const message = lines.join('\n');
 
   if (type === 'whatsapp') {
-    window.open(`https://wa.me/${state.whatsappNumber}?text=${encodeURIComponent(message)}`, '_blank', 'noopener');
+    const whatsappUrl = `https://wa.me/${state.whatsappNumber}?text=${encodeURIComponent(message)}`;
+    const destinationWindow = whatsappWindow || window.open('', '_blank');
+    if (destinationWindow) {
+      destinationWindow.opener = null;
+      destinationWindow.location.href = whatsappUrl;
+    } else {
+      window.location.href = whatsappUrl;
+    }
     formFeedback.textContent = 'Your order details are ready in WhatsApp. Review the message and send it to the shop.';
     return;
   }
@@ -642,10 +657,7 @@ document.addEventListener('click', event => {
   }
 });
 
-orderForm.addEventListener('submit', event => {
-  event.preventDefault();
-  openOrderMenu(orderSubmitButton);
-});
+orderForm.addEventListener('submit', event => event.preventDefault());
 
 cartToggle.addEventListener('click', () => {
   if (cartDrawer.classList.contains('is-open')) closeCart();

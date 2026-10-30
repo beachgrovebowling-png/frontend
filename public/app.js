@@ -1,4 +1,4 @@
-const state = { products: [], category: 'all', query: '', whatsappConfigured: false, whatsappNumber: '', contactEmail: '', cart: loadCart() };
+const state = { products: [], category: 'all', query: '', whatsappConfigured: false, whatsappNumber: '', contactEmail: '', submittedOrder: null, cart: loadCart() };
 const API_BASE = String(window.__API_BASE__ || '').replace(/\/$/, '');
 const productGrid = document.querySelector('#product-grid');
 const catalogStatus = document.querySelector('#catalog-status');
@@ -8,10 +8,10 @@ const emptyState = document.querySelector('#empty-state');
 const productSelect = document.querySelector('#product-select');
 const orderForm = document.querySelector('#order-form');
 if (orderForm) orderForm.action = apiUrl('/api/orders');
-const orderNowButton = document.querySelector('#order-submit-button');
-const orderMenu = document.querySelector('#order-channel-menu');
-const orderSiteOption = document.querySelector('#order-site-option');
+const orderSubmitButton = document.querySelector('#order-submit-button');
 const formFeedback = document.querySelector('#form-feedback');
+const orderMenus = document.querySelectorAll('.order-menu');
+const orderNowButtons = document.querySelectorAll('.order-now-button');
 const dialog = document.querySelector('#product-dialog');
 const cartDrawer = document.querySelector('#cart-drawer');
 const cartItems = document.querySelector('#cart-items');
@@ -77,12 +77,21 @@ function priceLabel(product) {
     : `$${price.toFixed(2)} USD`;
 }
 
+function productImages(product) {
+  const source = Array.isArray(product.images) && product.images.length
+    ? product.images
+    : [...(product.image ? [{ url: product.image, alt: product.imageAlt || '' }] : []), ...(Array.isArray(product.gallery) ? product.gallery : [])];
+  const images = source.filter((image, index, list) => image?.url && list.findIndex(item => item?.url === image.url) === index);
+  const coverIndex = images.findIndex(image => image.url === product.image);
+  if (coverIndex > 0) images.unshift(...images.splice(coverIndex, 1));
+  return images;
+}
+
 function productVisual(product, dialogImage = false) {
-  const galleryImage = Array.isArray(product.gallery) ? product.gallery.find(image => image?.url) : null;
-  const imageUrl = product.image || galleryImage?.url;
-  if (imageUrl) {
-    const alt = product.imageAlt || galleryImage?.alt || `${product.brand} ${product.name}`;
-    return `<img class="${dialogImage ? '' : 'product-image'}" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(alt)}" loading="lazy">`;
+  const image = productImages(product)[0];
+  if (image) {
+    const alt = image.alt || product.imageAlt || `${product.brand} ${product.name}`;
+    return `<img class="${dialogImage ? '' : 'product-image'}" src="${escapeHtml(image.url)}" alt="${escapeHtml(alt)}" loading="lazy">`;
   }
   return '<div class="product-placeholder" role="img" aria-label="Product image unavailable">Image unavailable</div>';
 }
@@ -107,12 +116,14 @@ function renderProducts() {
     : 'Try another category or clear your search.';
   document.querySelector('#clear-filters').hidden = noPublishedProducts;
   products.forEach((product, index) => {
+    const images = productImages(product);
     const card = document.createElement('article');
     card.className = 'product-card';
     card.style.animationDelay = `${Math.min(index * 60, 240)}ms`;
     card.innerHTML = `
       <div class="product-visual">
-        ${productVisual(product)}
+        ${images.length ? `<img class="product-image" src="${escapeHtml(images[0].url)}" alt="${escapeHtml(images[0].alt || product.imageAlt || `${product.brand} ${product.name}`)}" loading="lazy">` : productVisual(product)}
+        ${images.length > 1 ? `<button class="card-image-arrow previous" type="button" data-image-step="-1" aria-label="Previous ${escapeHtml(product.name)} photo">‹</button><button class="card-image-arrow next" type="button" data-image-step="1" aria-label="Next ${escapeHtml(product.name)} photo">›</button><span class="card-image-count" aria-live="polite">1 / ${images.length}</span>` : ''}
         <span class="product-tag ${product.featured ? 'featured' : ''}">${product.featured ? 'Featured' : escapeHtml(categoryLabels[product.category] || 'Equipment')}</span>
       </div>
       <div class="product-info">
@@ -127,6 +138,29 @@ function renderProducts() {
       </div>`;
     const image = card.querySelector('img');
     if (image) image.addEventListener('error', () => image.replaceWith(createMissingImageLabel()), { once: true });
+    if (images.length > 1) {
+      let imageIndex = 0;
+      const showImage = nextIndex => {
+        imageIndex = (nextIndex + images.length) % images.length;
+        const selected = images[imageIndex];
+        image.src = selected.url;
+        image.alt = selected.alt || product.imageAlt || `${product.brand} ${product.name}`;
+        card.querySelector('.card-image-count').textContent = `${imageIndex + 1} / ${images.length}`;
+      };
+      card.querySelectorAll('[data-image-step]').forEach(button => button.addEventListener('click', event => {
+        event.stopPropagation();
+        showImage(imageIndex + Number(button.dataset.imageStep));
+      }));
+      let touchStartX = null;
+      const visual = card.querySelector('.product-visual');
+      visual.addEventListener('touchstart', event => { touchStartX = event.changedTouches[0]?.clientX ?? null; }, { passive: true });
+      visual.addEventListener('touchend', event => {
+        const touchEndX = event.changedTouches[0]?.clientX;
+        if (touchStartX == null || touchEndX == null || Math.abs(touchEndX - touchStartX) < 35) return;
+        showImage(imageIndex + (touchEndX < touchStartX ? 1 : -1));
+        touchStartX = null;
+      }, { passive: true });
+    }
     productGrid.append(card);
   });
   catalogStatus.textContent = noPublishedProducts
@@ -153,6 +187,8 @@ function applyPublicSettings(siteData) {
   const site = siteData.site || {};
   const homepage = siteData.homepage || {};
   const branding = siteData.branding || {};
+  state.whatsappNumber = String(site.whatsappNumber || site.contactPhone || '').trim();
+  state.contactEmail = String(site.contactEmail || '').trim();
   const title = document.querySelector('#hero-title');
   if (title && homepage.headline) {
     const words = homepage.headline.trim().split(/\s+/);
@@ -183,22 +219,13 @@ function applyPublicSettings(siteData) {
   } else {
     currentHeroImage?.remove();
   }
-  const contactEmail = String(site.contactEmail || '').trim();
-  state.contactEmail = contactEmail;
-  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.contactEmail)) {
     const emailShopButton = document.querySelector('#email-shop-button');
-    const mailto = `mailto:${contactEmail}`;
+    const mailto = `mailto:${state.contactEmail}`;
     if (emailShopButton) {
       emailShopButton.href = mailto;
-      emailShopButton.setAttribute('aria-label', `Email the shop at ${contactEmail}`);
+      emailShopButton.setAttribute('aria-label', `Email the shop at ${state.contactEmail}`);
     }
-  }
-  const whatsappNumber = String(site.whatsappNumber || '').replace(/\D/g, '');
-  state.whatsappNumber = whatsappNumber;
-  const whatsappContactButton = document.querySelector('#whatsapp-contact-button');
-  if (whatsappContactButton) {
-    whatsappContactButton.hidden = !whatsappNumber;
-    if (whatsappNumber) whatsappContactButton.href = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent('Hello, I have a question about bowling equipment.')}`;
   }
   if (siteData.seo?.title) document.title = siteData.seo.title;
   if (site.name) {
@@ -287,10 +314,7 @@ function showProductDetails(product) {
   document.querySelector('#dialog-availability').textContent = `Availability: ${product.availability === 'available' ? 'Available' : product.availability === 'out-of-stock' ? 'Currently unavailable' : 'Contact store for confirmation'}`;
   const imageArea = document.querySelector('#dialog-image');
   const galleryArea = document.querySelector('#dialog-gallery');
-  const galleryImages = [
-    ...(product.image ? [{ url: product.image, alt: product.imageAlt || `${product.brand} ${product.name}` }] : []),
-    ...(Array.isArray(product.gallery) ? product.gallery.filter(image => image?.url && image.url !== product.image) : [])
-  ];
+  const galleryImages = productImages(product);
   const renderDialogImage = imageData => {
     const image = document.createElement('img');
     image.alt = imageData.alt || `${product.brand} ${product.name}`;
@@ -349,7 +373,7 @@ function addToCart(productId, weightValue = null, quantity = 1) {
   if (existing) {
     existing.quantity += quantity;
   } else {
-    state.cart.push({ productId: product.id, slug: product.slug, name: product.name, brand: product.brand, price: product.price, salePrice: product.salePrice, weightValue, quantity, cartKey });
+    state.cart.push({ productId: product.id, slug: product.slug, name: product.name, brand: product.brand, price: product.price, weightValue, quantity, cartKey });
   }
   saveCart();
   if (cartDrawer) cartDrawer.classList.add('is-open');
@@ -363,7 +387,7 @@ function removeCartItem(productId, weightValue = null) {
 function renderCart() {
   if (!cartItems) return;
   const total = state.cart.reduce((sum, item) => {
-    const product = state.products.find(entry => entry.id === item.productId || entry.slug === item.productId) || { slug: item.slug, price: item.price, salePrice: item.salePrice };
+    const product = state.products.find(entry => entry.id === item.productId || entry.slug === item.productId) || { slug: item.slug, price: item.price };
     const unitPrice = cartItemPrice(product, item.quantity);
     return sum + (Number.isFinite(unitPrice) ? unitPrice * item.quantity : 0);
   }, 0);
@@ -375,7 +399,7 @@ function renderCart() {
     return;
   }
   state.cart.forEach(item => {
-    const product = state.products.find(entry => entry.id === item.productId || entry.slug === item.productId) || { name: item.name, brand: item.brand, price: item.price, salePrice: item.salePrice, slug: item.slug };
+    const product = state.products.find(entry => entry.id === item.productId || entry.slug === item.productId) || { name: item.name, brand: item.brand, price: item.price, slug: item.slug };
     const row = document.createElement('div');
     row.className = 'cart-item';
     row.innerHTML = `
@@ -482,7 +506,6 @@ productGrid.addEventListener('click', event => {
   }
   if (orderButton) {
     productSelect.value = orderButton.dataset.order;
-    productSelect.dispatchEvent(new Event('change', { bubbles: true }));
     document.querySelector('#order').scrollIntoView({ behavior: 'smooth' });
     productSelect.focus({ preventScroll: true });
   } else if (detailsButton) {
@@ -503,117 +526,126 @@ document.querySelector('#clear-filters').addEventListener('click', () => {
   if (button) handleSelectCategory(button);
 });
 
-orderNowButton.addEventListener('click', () => {
-  orderMenu.hidden = !orderMenu.hidden;
-  orderNowButton.setAttribute('aria-expanded', String(!orderMenu.hidden));
-});
-
-productSelect.addEventListener('change', () => {
-  if (!productSelect.value || orderSiteOption.dataset.completed === 'true') return;
-  const whatsappLink = document.querySelector('#order-whatsapp-link');
-  const emailLink = document.querySelector('#order-email-link');
-  const whatsappAvailable = Boolean(state.whatsappNumber);
-  const emailAvailable = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.contactEmail);
-  whatsappLink.classList.toggle('is-disabled', !whatsappAvailable);
-  whatsappLink.setAttribute('aria-disabled', String(!whatsappAvailable));
-  emailLink.classList.toggle('is-disabled', !emailAvailable);
-  emailLink.setAttribute('aria-disabled', String(!emailAvailable));
-  orderMenu.hidden = false;
-  orderNowButton.setAttribute('aria-expanded', 'true');
-});
-
-
-document.querySelectorAll('#order-whatsapp-link, #order-email-link').forEach(link => {
-link.addEventListener('click', event => {
-if (link.getAttribute('aria-disabled') === 'true') {
-event.preventDefault();
-return;
+function closeOrderMenus() {
+  orderMenus.forEach(menu => menu.hidden = true);
 }
-if (orderSiteOption.dataset.completed === 'true') return;
-event.preventDefault();
-if (state.pendingOrderChannel) return;
-const popup = window.open('', '_blank');
-state.pendingOrderChannel = { type: link.id === 'order-whatsapp-link' ? 'whatsapp' : 'email', popup };
-orderForm.requestSubmit(orderSiteOption);
+
+function openOrderMenu(button) {
+  const menu = button?.closest('.order-now-wrap')?.querySelector('.order-menu');
+  if (!menu) return;
+  const shouldOpen = menu.hidden;
+  closeOrderMenus();
+  menu.hidden = !shouldOpen;
+}
+
+async function handleDirectOrderAction(type, contactOnly = false) {
+  closeOrderMenus();
+  if (contactOnly) {
+    if (type === 'whatsapp') {
+      if (!state.whatsappNumber) return;
+      window.open(`https://wa.me/${state.whatsappNumber}?text=${encodeURIComponent('Hi BowlersMechanic, I have a question about your bowling equipment.')}`, '_blank', 'noopener');
+    } else if (state.contactEmail) {
+      window.location.href = `mailto:${state.contactEmail}?subject=${encodeURIComponent('BowlersMechanic enquiry')}`;
+    }
+    return;
+  }
+  if (type === 'whatsapp' && !state.whatsappNumber) {
+    formFeedback.textContent = 'WhatsApp ordering is not available right now. Please choose email instead.';
+    return;
+  }
+  if (type === 'email' && !state.contactEmail) {
+    formFeedback.textContent = 'The shop email is not available right now. Please choose WhatsApp instead.';
+    return;
+  }
+  if (!state.submittedOrder && !orderForm.reportValidity()) return;
+  if (!state.submittedOrder) {
+    const quantity = Number(orderForm.elements.quantity.value);
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 50) {
+      formFeedback.textContent = 'Choose a quantity from 1 to 50.';
+      return;
+    }
+    formFeedback.textContent = 'Recording your enquiry…';
+    const formData = new FormData(orderForm);
+    const response = await fetch(apiUrl('/api/orders'), {
+      method: 'POST',
+      headers: { Accept: 'application/json' },
+      body: new URLSearchParams(formData)
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || 'Your order could not be submitted right now.');
+    state.whatsappConfigured = Boolean(data.whatsappNumber);
+    if (data.whatsappNumber) state.whatsappNumber = String(data.whatsappNumber).trim();
+    if (data.contactEmail) state.contactEmail = String(data.contactEmail).trim();
+    const selectedProduct = state.products.find(item => item.id === formData.get('productId') || item.slug === formData.get('productId'));
+    state.submittedOrder = {
+      reference: String(data.order?.reference || data.reference || 'Pending'),
+      customerName: String(formData.get('customerName') || '').trim(),
+      customerPhone: String(formData.get('customerPhone') || '').trim(),
+      email: String(formData.get('email') || '').trim(),
+      productId: selectedProduct?.id || String(formData.get('productId') || ''),
+      quantity: String(formData.get('quantity') || '1'),
+      paymentMethod: String(formData.get('paymentMethod') || ''),
+      requirements: String(formData.get('requirements') || '').trim()
+    };
+    orderForm.querySelectorAll('input, select, textarea').forEach(field => { field.disabled = true; });
+  }
+  const order = state.submittedOrder;
+  const product = state.products.find(item => item.id === order.productId || item.slug === order.productId);
+  if (!product) {
+    formFeedback.textContent = 'The selected product is no longer available. Refresh the catalogue and try again.';
+    return;
+  }
+  const price = priceLabel(product);
+  const lines = [
+    'BowlersMechanic order enquiry',
+    '',
+    `Order reference: ${order.reference}`,
+    `Customer: ${order.customerName}`,
+    `Phone: ${order.customerPhone}`,
+    ...(order.email ? [`Email: ${order.email}`] : []),
+    `Product: ${product.brand} ${product.name}`,
+    `Price: ${price}`,
+    `Quantity: ${order.quantity}`,
+    `Preferred payment method: ${order.paymentMethod}`,
+    ...(order.requirements ? [`Additional requirements: ${order.requirements}`] : []),
+    '',
+    'Please confirm availability and final order details. This enquiry is not an order confirmation.'
+  ];
+  const message = lines.join('\n');
+
+  if (type === 'whatsapp') {
+    window.open(`https://wa.me/${state.whatsappNumber}?text=${encodeURIComponent(message)}`, '_blank', 'noopener');
+    formFeedback.textContent = 'Your order details are ready in WhatsApp. Review the message and send it to the shop.';
+    return;
+  }
+  const subject = encodeURIComponent(`Order enquiry ${order.reference}`);
+  const body = encodeURIComponent(message);
+  window.location.href = `mailto:${state.contactEmail}?subject=${subject}&body=${body}`;
+  formFeedback.textContent = 'Your order details are ready in an email draft to the shop.';
+}
+
+orderNowButtons.forEach(button => {
+  button.addEventListener('click', event => {
+    event.stopPropagation();
+    openOrderMenu(button);
+  });
 });
-})
+
+document.querySelectorAll('[data-order-action]').forEach(button => {
+  button.addEventListener('click', () => handleDirectOrderAction(button.dataset.orderAction, Boolean(button.closest('#contact-order-menu'))).catch(error => {
+    formFeedback.textContent = error.message || 'Your order could not be submitted right now.';
+  }));
+});
+
+document.addEventListener('click', event => {
+  if (!event.target.closest('.order-now-wrap') && !event.target.closest('.order-menu-option')) {
+    closeOrderMenus();
+  }
+});
 
 orderForm.addEventListener('submit', event => {
   event.preventDefault();
-  formFeedback.textContent = '';
-  if (!orderForm.reportValidity()) return;
-  const quantity = Number(orderForm.elements.quantity.value);
-  if (!Number.isInteger(quantity) || quantity < 1 || quantity > 50) {
-    formFeedback.textContent = 'Choose a quantity from 1 to 50.';
-    return;
-  }
-  const button = orderSiteOption;
-  const whatsappLink = document.querySelector('#order-whatsapp-link');
-  const emailLink = document.querySelector('#order-email-link');
-  const payload = Object.fromEntries(new FormData(orderForm).entries());
-  button.disabled = true;
-  button.textContent = 'Sending request...';
-  orderMenu.hidden = true;
-  fetch(apiUrl('/api/orders'), {
-    method: 'POST',
-    cache: 'no-store',
-    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  }).then(async response => {
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.error || 'Could not send your order request. Please try again.');
-    const product = state.products.find(item => item.id === payload.productId);
-    const details = [
-      `Order request ${result.reference}`,
-      `Customer: ${payload.customerName}`,
-      `Phone: ${payload.customerPhone}`,
-      ...(payload.email ? [`Email: ${payload.email}`] : []),
-      `Product: ${product ? `${product.brand} ${product.name}` : payload.productId}`,
-      `Price: ${product ? priceLabel(product) : 'Contact for price'}`,
-      `Quantity: ${payload.quantity}`,
-      `Preferred payment: ${payload.paymentMethod}`,
-      ...(payload.requirements ? [`Notes: ${payload.requirements}`] : [])
-    ].join('\n');
-    const number = String(result.whatsappNumber || state.whatsappNumber || '').replace(/\D/g, '');
-    whatsappLink.classList.toggle('is-disabled', !number);
-    whatsappLink.setAttribute('aria-disabled', String(!number));
-    if (number) whatsappLink.href = `https://wa.me/${number}?text=${encodeURIComponent(`Hello, I submitted an order request.\n\n${details}`)}`;
-    const email = String(result.contactEmail || state.contactEmail || '').trim();
-    const emailConfigured = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    emailLink.classList.toggle('is-disabled', !emailConfigured);
-    emailLink.setAttribute('aria-disabled', String(!emailConfigured));
-    if (emailConfigured) emailLink.href = `mailto:${email}?subject=${encodeURIComponent(`Order request ${result.reference}`)}&body=${encodeURIComponent(details)}`;
-    orderForm.querySelectorAll('input, select, textarea').forEach(field => { field.disabled = true; });
-    button.disabled = true;
-    button.dataset.completed = 'true';
-    button.textContent = 'Order on Site Complete';
-    orderNowButton.setAttribute('aria-expanded', 'true');
-    orderMenu.hidden = false;
-    const pendingChannel = state.pendingOrderChannel;
-    state.pendingOrderChannel = null;
-    if (pendingChannel) {
-      const channelLink = pendingChannel.type === 'whatsapp' ? whatsappLink : emailLink;
-      if (channelLink.getAttribute('aria-disabled') === 'false') {
-        if (pendingChannel.popup) pendingChannel.popup.location.href = channelLink.href;
-        else window.location.href = channelLink.href;
-        formFeedback.textContent = `Request ${result.reference} is recorded on the site. Your order details are ready in ${pendingChannel.type === 'whatsapp' ? 'WhatsApp' : 'email'}.`;
-      } else {
-        pendingChannel.popup?.close();
-        formFeedback.textContent = `Request ${result.reference} is recorded on the site, but the selected contact channel is not configured.`;
-      }
-    } else {
-      formFeedback.textContent = `Request ${result.reference} is recorded on the site. Choose WhatsApp or email to send the same order details.`;
-    }
-  }).catch(error => {
-    state.pendingOrderChannel?.popup?.close();
-    state.pendingOrderChannel = null;
-    formFeedback.textContent = error.message;
-  }).finally(() => {
-    if (button.dataset.completed !== 'true') {
-      button.disabled = false;
-      button.textContent = 'Order on Site (Required)';
-    }
-  });
+  openOrderMenu(orderSubmitButton);
 });
 
 cartToggle.addEventListener('click', () => {
@@ -644,7 +676,6 @@ cartSubmit.addEventListener('click', () => {
   }
   const firstItem = state.cart[0];
   productSelect.value = firstItem.productId;
-  productSelect.dispatchEvent(new Event('change', { bubbles: true }));
   orderForm.elements.quantity.value = firstItem.quantity;
   document.querySelector('#order').scrollIntoView({ behavior: 'smooth' });
   formFeedback.textContent = 'Cart items are ready for enquiry. Review details and continue to WhatsApp.';

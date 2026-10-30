@@ -136,6 +136,13 @@ async function openProductEditor(productId = null) {
 function productForm(product = {}) {
   adminState.currentProduct = product._id || null;
   const isEdit = Boolean(product._id);
+  const productImages = Array.isArray(product.images) && product.images.length
+    ? product.images
+    : [...(product.image ? [{ url: product.image, alt: product.imageAlt || '' }] : []), ...(product.gallery || [])];
+  const uniqueProductImages = productImages.filter((item, index, list) => item?.url && list.findIndex(candidate => candidate?.url === item.url) === index);
+  const coverImage = uniqueProductImages.find(item => item.url === product.image) || uniqueProductImages[0] || null;
+  if (coverImage) uniqueProductImages.unshift(...uniqueProductImages.splice(uniqueProductImages.indexOf(coverImage), 1));
+  queueMicrotask(() => initializeProductGallery(product, uniqueProductImages));
   content.innerHTML = `${pageHeader(isEdit ? 'Edit product' : 'Add product', 'Only publish verified product details, prices, and inventory.', '<button class="admin-button secondary" data-go="products">← Product list</button>')}
   <form id="product-form"><div class="editor-layout"><section class="panel"><div class="panel-body">
     <div class="form-section"><h3>Product details</h3><div class="admin-form-grid">
@@ -239,9 +246,8 @@ function updateSelectedImage(url, media, target) {
   } else if (target === 'gallery') {
     const form = document.querySelector('#product-form');
     const gallery = readProductGallery(form);
-    if (gallery.length >= 12) {
-      notify('A product can have up to 12 gallery photos.', 'error');
-    } else if (!gallery.some(item => item.url === url)) {
+    if (allProductImages(form).length >= 12) notify('A product can have up to 12 photos.', 'error');
+    else if (!gallery.some(item => item.url === url)) {
       gallery.push({ url, alt: media.alt || media.filename });
       saveProductGallery(form, gallery);
     }
@@ -253,21 +259,45 @@ function readProductGallery(form = document.querySelector('#product-form')) {
   try { return JSON.parse(form.elements.gallery.value || '[]'); } catch { return []; }
 }
 
+function initializeProductGallery(product, images) {
+  const form = document.querySelector('#product-form');
+  if (!form) return;
+  const cover = images[0] || null;
+  form.elements.image.value = cover?.url || '';
+  form.elements.imageAlt.value = cover?.alt || product.imageAlt || '';
+  const preview = document.querySelector('#product-image-preview');
+  preview.innerHTML = cover
+    ? `<img src="${escapeHtml(cover.url)}" alt="${escapeHtml(cover.alt || '')}">`
+    : '<span class="image-empty">No image selected</span>';
+  const removeCover = document.createElement('button');
+  removeCover.type = 'button';
+  removeCover.className = 'small-button';
+  removeCover.dataset.removeCover = '';
+  removeCover.textContent = 'Remove cover photo';
+  preview.parentElement.append(removeCover);
+  saveProductGallery(form, images.slice(1));
+}
+
+function allProductImages(form = document.querySelector('#product-form')) {
+  const cover = form?.elements.image.value;
+  return [...(cover ? [{ url: cover, alt: form.elements.imageAlt.value || '' }] : []), ...readProductGallery(form)];
+}
+
 function saveProductGallery(form, gallery) {
   form.elements.gallery.value = JSON.stringify(gallery);
-  document.querySelector('#gallery-preview').innerHTML = gallery.map((item, index) => `<span class="gallery-preview-item" style="display:inline-flex;flex-direction:column;gap:4px;vertical-align:top;margin:0 8px 8px 0"><img src="${escapeHtml(item.url)}" alt="${escapeHtml(item.alt)}" style="width:66px;height:60px;object-fit:cover"><button type="button" class="small-button" data-remove-gallery="${index}" aria-label="Remove gallery photo ${index + 1}">Remove</button></span>`).join('');
+  document.querySelector('#gallery-preview').innerHTML = gallery.map((item, index) => `<span class="gallery-preview-item"><img src="${escapeHtml(item.url)}" alt="${escapeHtml(item.alt)}"><button type="button" class="small-button" data-set-cover="${index}">Make cover</button><span><button type="button" class="small-button" data-gallery-move="${index}" data-direction="-1" aria-label="Move photo ${index + 2} earlier" ${index === 0 ? 'disabled' : ''}>↑</button><button type="button" class="small-button" data-gallery-move="${index}" data-direction="1" aria-label="Move photo ${index + 2} later" ${index === gallery.length - 1 ? 'disabled' : ''}>↓</button><button type="button" class="small-button" data-remove-gallery="${index}" aria-label="Remove gallery photo ${index + 2}">Remove</button></span></span>`).join('');
 }
 
 function addProductGalleryMedia(mediaItems) {
   const form = document.querySelector('#product-form');
   if (!form) return;
-  const gallery = readProductGallery(form);
+  const gallery = allProductImages(form);
   const newItems = mediaItems.filter(media => media?.url && !gallery.some(item => item.url === media.url));
   const availableSlots = Math.max(0, 12 - gallery.length);
-  gallery.push(...newItems.slice(0, availableSlots).map(media => ({ url: media.url, alt: media.alt || media.title || media.filename })));
-  saveProductGallery(form, gallery);
+  const attached = newItems.slice(0, availableSlots);
+  saveProductGallery(form, [...readProductGallery(form), ...attached.map(media => ({ url: media.url, alt: media.alt || media.title || media.filename }))]);
   if (newItems.length > availableSlots) notify('Only the first photos that fit within the 12-photo gallery limit were attached.', 'error');
-  else notify(`${Math.min(newItems.length, availableSlots)} photo${Math.min(newItems.length, availableSlots) === 1 ? '' : 's'} attached to this product. Save the product to keep the changes.`);
+  else notify(`${attached.length} photo${attached.length === 1 ? '' : 's'} attached to this product. Save the product to keep the changes.`);
 }
 
 async function openMediaPicker(target) {
@@ -304,7 +334,7 @@ function collectProduct(form, status) {
   return {
     name: data.get('name'), brand: data.get('brand'), slug: data.get('slug'), sku: data.get('sku'), category: data.get('category'),
     shortDescription: data.get('shortDescription'), fullDescription: data.get('fullDescription'), description: data.get('shortDescription'),
-    image: data.get('image') || null, imageAlt: data.get('imageAlt'), gallery, price: data.get('price') || null, salePrice: data.get('salePrice') || null,
+    image: data.get('image') || null, imageAlt: data.get('imageAlt'), gallery, images: [...(data.get('image') ? [{ url: data.get('image'), alt: data.get('imageAlt') || '' }] : []), ...gallery], price: data.get('price') || null, salePrice: data.get('salePrice') || null,
     priceConfirmed: data.has('priceConfirmed'), stockQuantity: data.get('stockQuantity') || null, lowStockThreshold: data.get('lowStockThreshold') || null,
     availability: data.get('availability'), condition: data.get('condition'), specifications, tags: String(data.get('tags') || '').split(',').map(tag => tag.trim()).filter(Boolean),
     featured: data.has('featured'), status
@@ -317,35 +347,26 @@ async function uploadFiles(files, target = null) {
   const progress = document.querySelector('#upload-progress'); const bar = progress?.querySelector('span'); const message = document.querySelector('#upload-message');
   if (progress) progress.hidden = false;
   if (message) message.textContent = `Uploading ${files.length} image${files.length > 1 ? 's' : ''}…`;
-  const sendUpload = async retried => {
-    const xhr = new XMLHttpRequest(); xhr.open('POST', apiUrl('/api/admin/media')); xhr.withCredentials = true; xhr.setRequestHeader('X-CSRF-Token', csrf.token);
-    xhr.upload.onprogress = event => { if (event.lengthComputable && bar) bar.style.width = `${Math.round(event.loaded / event.total * 100)}%`; };
-    xhr.onload = async () => {
-      try {
-        const data = JSON.parse(xhr.responseText || '{}');
-        if (xhr.status === 403 && !retried) {
-          await refreshCsrf();
-          if (!csrf.token) throw new Error('Your security token expired. Sign in again and retry the upload.');
-          await sendUpload(true);
-          return;
-        }
-        if (xhr.status < 200 || xhr.status >= 300) throw new Error(data.error || 'Upload failed.');
-        if (target === 'gallery') {
-          addProductGalleryMedia(data.media);
-        } else if (target === 'image') {
-          const media = data.media[0];
-          updateSelectedImage(media.url, media, 'image');
-          notify('Equipment photo uploaded and attached to this product. Save the product to keep the change.');
-        } else {
-          notify(`${data.media.length} image${data.media.length === 1 ? '' : 's'} uploaded.`);
-          await renderMedia();
-        }
-      } catch (error) { notify(error.message, 'error'); if (message) message.textContent = error.message; }
-    };
-    xhr.onerror = () => notify('Upload failed because the network connection was interrupted.', 'error');
-    xhr.send(form);
+  const xhr = new XMLHttpRequest(); xhr.open('POST', apiUrl('/api/admin/media')); xhr.withCredentials = true; xhr.setRequestHeader('X-CSRF-Token', csrf.token);
+  xhr.upload.onprogress = event => { if (event.lengthComputable && bar) bar.style.width = `${Math.round(event.loaded / event.total * 100)}%`; };
+  xhr.onload = async () => {
+    try {
+      const data = JSON.parse(xhr.responseText || '{}');
+      if (xhr.status < 200 || xhr.status >= 300) throw new Error(data.error || 'Upload failed.');
+      if (target === 'gallery') {
+        addProductGalleryMedia(data.media);
+      } else if (target === 'image') {
+        const media = data.media[0];
+        updateSelectedImage(media.url, media, 'image');
+        notify('Equipment photo uploaded and attached to this product. Save the product to keep the change.');
+      } else {
+        notify(`${data.media.length} image${data.media.length === 1 ? '' : 's'} uploaded.`);
+        await renderMedia();
+      }
+    } catch (error) { notify(error.message, 'error'); if (message) message.textContent = error.message; }
   };
-  await sendUpload(false);
+  xhr.onerror = () => notify('Upload failed because the network connection was interrupted.', 'error');
+  xhr.send(form);
 }
 
 function askConfirm(copy, action) {

@@ -608,8 +608,7 @@ async function handleDirectOrderAction(type, contactOnly = false) {
     `Quantity: ${order.quantity}`,
     `Preferred payment method: ${order.paymentMethod}`,
     ...(order.requirements ? [`Additional requirements: ${order.requirements}`] : []),
-    '',
-    'Please confirm availability and final order details. This enquiry is not an order confirmation.'
+    ''
   ];
   const message = lines.join('\n');
 

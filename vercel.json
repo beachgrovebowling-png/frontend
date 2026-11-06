@@ -2,11 +2,11 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://bowlers-backend-jfj8.onrender.com/api/:path*"
+      "destination": "https://backend-2-apv2.onrender.com/api/:path*"
     },
     {
       "source": "/media/:path*",
-      "destination": "https://bowlers-backend-jfj8.onrender.com/media/:path*"
+      "destination": "https://backend-2-apv2.onrender.com/media/:path*"
     }
   ]
 }

@@ -92,7 +92,7 @@ async function loadView(view = adminState.view) {
   adminState.view = view; setHeading(view);
   content.innerHTML = '<div class="no-data">Loading workspace…</div>';
   try {
-    const renderers = { dashboard: renderDashboard, products: renderProducts, product: renderProductEditor, media: renderMedia, categories: renderCategories, orders: renderOrders, homepage: renderHomepage, settings: renderSettings, account: renderAccounts, password: renderPassword };
+    const renderers = { dashboard: renderDashboard, visitors: renderVisitors, products: renderProducts, product: renderProductEditor, media: renderMedia, categories: renderCategories, orders: renderOrders, homepage: renderHomepage, settings: renderSettings, account: renderAccounts, password: renderPassword };
     await (renderers[view] || renderDashboard)();
   } catch (error) { content.innerHTML = `<div class="panel"><div class="no-data">${escapeHtml(error.message)}<br><button class="small-button" data-retry>Try again</button></div></div>`; }
 }
@@ -101,14 +101,36 @@ async function renderDashboard() {
   const data = await api('/api/admin/dashboard');
   const stats = data.stats;
   const storage = data.status.storage;
+  const visitorStats = data.visitorStats || { today: 0, week: 0, month: 0 };
   document.querySelector('#sidebar-dot').classList.toggle('online', data.status.database === 'connected');
   document.querySelector('#sidebar-status').textContent = data.status.database === 'connected' ? 'Database connected' : 'Database unavailable';
   const pendingBadge = document.querySelector('#pending-badge'); pendingBadge.hidden = !stats.pending; pendingBadge.textContent = stats.pending;
-  const cards = [['Total products', stats.products], ['Published', stats.published], ['Drafts', stats.drafts], ['Order requests', stats.orders], ['Pending requests', stats.pending], ['Confirmed', stats.confirmed], ['Delivered', stats.delivered], ['Categories', stats.categories]];
+  const cards = [['Visitors today', visitorStats.today], ['Visitors this week', visitorStats.week], ['Visitors this month', visitorStats.month], ['Total products', stats.products], ['Published', stats.published], ['Drafts', stats.drafts], ['Order requests', stats.orders], ['Pending requests', stats.pending], ['Confirmed', stats.confirmed], ['Delivered', stats.delivered], ['Categories', stats.categories]];
   content.innerHTML = `${pageHeader('Store overview', 'A live view of your catalogue and customer requests.')}
     <div class="status-strip"><span class="status-item"><i class="status-light"></i>Website online</span><span class="status-item"><i class="status-light"></i>MongoDB connected</span><span class="status-item"><i class="status-light ${storage.persistentAcrossDeploys ? '' : 'warning'}"></i>Images: ${escapeHtml(storage.provider)}${storage.persistentAcrossDeploys ? ' / persistent' : ' / deployment-local'}</span><span class="status-item"><i class="status-light ${data.status.whatsappConfigured ? '' : 'warning'}"></i>WhatsApp ${data.status.whatsappConfigured ? 'configured' : 'disabled'}</span></div>
     <div class="stats-grid">${cards.map(([label, value]) => `<article class="stat-card"><span class="stat-label">${label}</span><strong class="stat-value">${Number(value) || 0}</strong><span class="stat-note">live records</span></article>`).join('')}</div>
-    <div class="dashboard-columns"><section class="panel"><div class="panel-heading"><h2>Recent requests</h2><button class="small-button" data-go="orders">Manage orders ↗</button></div><div class="table-wrap">${ordersTable(data.recentOrders, true)}</div></section><section class="panel"><div class="panel-heading"><h2>Quick actions</h2></div><div class="panel-body"><div class="quick-grid"><button class="quick-action" data-create-product>Add a product <span>＋</span></button><button class="quick-action" data-go="media">Upload images <span>↗</span></button><button class="quick-action" data-go="homepage">Edit homepage <span>↗</span></button><button class="quick-action" data-go="categories">Manage categories <span>↗</span></button><button class="quick-action" data-go="settings">Website settings <span>↗</span></button><button class="quick-action" data-go="orders">Review requests <span>↗</span></button></div></div><div class="panel-heading"><h2>Recent activity</h2></div><div class="panel-body">${data.activities.length ? data.activities.map(item => `<div class="account-row"><span><b>${escapeHtml(item.summary)}</b><small class="table-sub">${escapeHtml(item.actorEmail)} · ${escapeHtml(item.action)}</small></span><span class="table-sub">${escapeHtml(fmtDate(item.createdAt))}</span></div>`).join('') : '<div class="no-data">No admin activity yet.</div>'}</div></section></div>`;
+    <div class="dashboard-columns"><section class="panel"><div class="panel-heading"><h2>Recent requests</h2><button class="small-button" data-go="orders">Manage orders ↗</button></div><div class="table-wrap">${ordersTable(data.recentOrders, true)}</div></section><section class="panel"><div class="panel-heading"><h2>Quick actions</h2></div><div class="panel-body"><div class="quick-grid"><button class="quick-action" data-create-product>Add a product <span>＋</span></button><button class="quick-action" data-go="media">Upload images <span>↗</span></button><button class="quick-action" data-go="homepage">Edit homepage <span>↗</span></button><button class="quick-action" data-go="categories">Manage categories <span>↗</span></button><button class="quick-action" data-go="settings">Website settings <span>↗</span></button><button class="quick-action" data-go="orders">Review requests <span>↗</span></button><button class="quick-action" data-go="visitors">Visitor activity <span>↗</span></button></div></div><div class="panel-heading"><h2>Recent activity</h2></div><div class="panel-body">${data.activities.length ? data.activities.map(item => `<div class="account-row"><span><b>${escapeHtml(item.summary)}</b><small class="table-sub">${escapeHtml(item.actorEmail)} · ${escapeHtml(item.action)}</small></span><span class="table-sub">${escapeHtml(fmtDate(item.createdAt))}</span></div>`).join('') : '<div class="no-data">No admin activity yet.</div>'}</div></section></div>
+    <section class="panel"><div class="panel-heading"><h2>Recent visitor activity</h2><button class="small-button" data-go="visitors">View all visitors ↗</button></div><div class="table-wrap">${visitorsTable(data.recentVisitors || [])}</div></section>`;
+}
+
+function visitorsTable(visitors = [], includeStatus = false) {
+  if (!visitors.length) return '<div class="no-data">No visitor activity has been recorded.</div>';
+  return `<table><thead><tr><th>Visit time</th><th>Page visited</th><th>Device</th><th>Browser</th>${includeStatus ? '<th>Email alert</th>' : ''}</tr></thead><tbody>${visitors.map(visitor => `<tr><td>${escapeHtml(fmtDate(visitor.createdAt))}</td><td><span class="table-title">${escapeHtml(visitor.page)}</span></td><td>${escapeHtml(visitor.device)}</td><td>${escapeHtml(visitor.browser)}</td>${includeStatus ? `<td>${escapeHtml(visitor.notificationStatus || 'pending')}</td>` : ''}</tr>`).join('')}</tbody></table>`;
+}
+
+async function renderVisitors() {
+  const [activity, notifications] = await Promise.all([
+    api('/api/admin/visitors'),
+    api('/api/admin/visitor-notifications')
+  ]);
+  const cards = [['Visitors today', activity.stats.today], ['Visitors this week', activity.stats.week], ['Visitors this month', activity.stats.month]];
+  const ownerControls = adminState.admin.role === 'owner'
+    ? `<form id="visitor-settings-form" class="panel-body"><div class="admin-form-grid"><label class="setting-field full">Notification recipient email<input class="admin-input" type="email" name="recipientEmail" value="${escapeHtml(notifications.recipientEmail)}" maxlength="254" placeholder="Use VISITOR_NOTIFICATION_EMAIL from Render when blank"><span class="table-sub">${notifications.usesEnvironmentRecipient ? 'Using the backend environment recipient.' : 'Saved in the protected website settings.'} Leave blank to use the Render environment value.</span></label><label class="check-row"><input type="checkbox" name="enabled" ${notifications.enabled ? 'checked' : ''}> Enable visitor email alerts</label><div class="status-strip"><span class="status-item"><i class="status-light ${notifications.emailConfigured ? '' : 'warning'}"></i>${notifications.emailConfigured ? 'Resend email is configured' : 'Email configuration incomplete'}</span><span class="table-sub">API keys and sender credentials remain on the backend.</span></div></div><div class="form-actions"><button class="admin-button primary">Save notification settings</button><button type="button" class="admin-button secondary" data-test-visitor-email>Send test email</button></div></form>`
+    : '<div class="panel-body"><p class="table-sub">Only the store owner can change visitor email settings or send a test email.</p></div>';
+  content.innerHTML = `${pageHeader('Visitor activity', 'Review anonymous visitor sessions and configure owner email alerts.')}
+    <div class="stats-grid">${cards.map(([label, value]) => `<article class="stat-card"><span class="stat-label">${label}</span><strong class="stat-value">${Number(value) || 0}</strong><span class="stat-note">UTC</span></article>`).join('')}</div>
+    <section class="panel" style="margin-top:15px"><div class="panel-heading"><h2>Recent visitors</h2></div><div class="table-wrap">${visitorsTable(activity.visitors, true)}</div></section>
+    <section class="panel" style="margin-top:15px"><div class="panel-heading"><h2>Email notifications</h2></div>${ownerControls}</section>`;
 }
 
 function ordersTable(orders = [], compact = false) {
@@ -136,6 +158,13 @@ async function openProductEditor(productId = null) {
 function productForm(product = {}) {
   adminState.currentProduct = product._id || null;
   const isEdit = Boolean(product._id);
+  const productImages = Array.isArray(product.images) && product.images.length
+    ? product.images
+    : [...(product.image ? [{ url: product.image, alt: product.imageAlt || '' }] : []), ...(product.gallery || [])];
+  const uniqueProductImages = productImages.filter((item, index, list) => item?.url && list.findIndex(candidate => candidate?.url === item.url) === index);
+  const coverImage = uniqueProductImages.find(item => item.url === product.image) || uniqueProductImages[0] || null;
+  if (coverImage) uniqueProductImages.unshift(...uniqueProductImages.splice(uniqueProductImages.indexOf(coverImage), 1));
+  queueMicrotask(() => initializeProductGallery(product, uniqueProductImages));
   content.innerHTML = `${pageHeader(isEdit ? 'Edit product' : 'Add product', 'Only publish verified product details, prices, and inventory.', '<button class="admin-button secondary" data-go="products">← Product list</button>')}
   <form id="product-form"><div class="editor-layout"><section class="panel"><div class="panel-body">
     <div class="form-section"><h3>Product details</h3><div class="admin-form-grid">
@@ -154,7 +183,7 @@ function productForm(product = {}) {
       <label class="setting-field">Availability<select name="availability" class="admin-select">${[['contact','Contact for availability'],['available','In stock (verified)'],['out-of-stock','Out of stock']].map(([v,l]) => `<option value="${v}" ${(product.availability || 'contact') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
       ${field('seoTitle', 'SEO title', product.seoTitle)}${field('seoDescription', 'SEO description', product.seoDescription)}
     </div></div><div class="form-actions"><button class="admin-button secondary" type="button" data-go="products">Cancel</button><button class="admin-button secondary" type="submit" name="status" value="draft">Save draft</button><button class="admin-button primary" type="submit" name="status" value="published">${isEdit ? 'Save changes' : 'Publish product'}</button></div></div></section>
-    <aside class="editor-side"><section class="panel"><div class="panel-heading"><h2>Publication</h2></div><div class="panel-body"><label class="check-row"><input name="featured" type="checkbox" ${product.featured ? 'checked' : ''}> Featured product</label><p class="table-sub">Current status: ${escapeHtml(product.status || 'published')}</p></div></section><section class="panel"><div class="panel-heading"><h2>Equipment photo</h2></div><div class="panel-body"><input type="hidden" name="image" value="${escapeHtml(product.image || '')}"><label class="setting-field">Image alt text<input class="admin-input" name="imageAlt" maxlength="240" value="${escapeHtml(product.imageAlt || '')}"></label><div class="image-slot" id="product-image-preview">${product.image ? `<img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.imageAlt || '')}">` : '<span class="image-empty">No image selected</span>'}</div><label class="small-button upload-button">Upload equipment photo<input id="product-image-file-input" type="file" accept="image/jpeg,image/png,image/webp,image/avif" hidden></label><button class="small-button" type="button" data-pick-image="image">Choose from media</button></div></section><section class="panel"><div class="panel-heading"><h2>Gallery</h2></div><div class="panel-body"><input type="hidden" name="gallery" value="${escapeHtml(JSON.stringify(product.gallery || []))}"><div id="gallery-preview" class="media-meta">${(product.gallery || []).map(item => `<img src="${escapeHtml(item.url)}" alt="${escapeHtml(item.alt)}" style="width:66px;height:60px;object-fit:cover">`).join('')}</div><button class="small-button" type="button" data-pick-image="gallery">Add gallery image</button></div></section></aside></div></form>`;
+    <aside class="editor-side"><section class="panel"><div class="panel-heading"><h2>Publication</h2></div><div class="panel-body"><label class="check-row"><input name="featured" type="checkbox" ${product.featured ? 'checked' : ''}> Featured product</label><p class="table-sub">Current status: ${escapeHtml(product.status || 'published')}</p></div></section><section class="panel"><div class="panel-heading"><h2>Equipment photo</h2></div><div class="panel-body"><input type="hidden" name="image" value="${escapeHtml(product.image || '')}"><label class="setting-field">Image alt text<input class="admin-input" name="imageAlt" maxlength="240" value="${escapeHtml(product.imageAlt || '')}"></label><div class="image-slot" id="product-image-preview">${product.image ? `<img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.imageAlt || '')}">` : '<span class="image-empty">No image selected</span>'}</div><label class="small-button upload-button">Upload equipment photo<input id="product-image-file-input" type="file" accept="image/jpeg,image/png,image/webp,image/avif" hidden></label><button class="small-button" type="button" data-pick-image="image">Choose from media</button></div></section><section class="panel"><div class="panel-heading"><h2>Gallery</h2></div><div class="panel-body"><input type="hidden" name="gallery" value="${escapeHtml(JSON.stringify(product.gallery || []))}"><div id="gallery-preview" class="media-meta">${(product.gallery || []).map((item, index) => `<span class="gallery-preview-item"><img src="${escapeHtml(item.url)}" alt="${escapeHtml(item.alt)}"><button type="button" class="small-button" data-remove-gallery="${index}" aria-label="Remove gallery photo ${index + 1}">Remove</button></span>`).join('')}</div><label class="small-button upload-button">Upload gallery photos<input id="product-gallery-file-input" type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple hidden></label><button class="small-button" type="button" data-pick-image="gallery">Add from media library</button><p class="table-sub">Select multiple photos at once. Up to 12 gallery photos per product.</p></div></section></aside></div></form>`;
 }
 
 function field(name, label, value = '', required = false, type = 'text', hint = '') {
@@ -237,12 +266,60 @@ function updateSelectedImage(url, media, target) {
     const preview = document.querySelector(`#${target}-preview`);
     if (preview) preview.innerHTML = `<img src="${escapeHtml(url)}" alt="${target === 'siteLogo' ? 'Logo preview' : 'Favicon preview'}">`;
   } else if (target === 'gallery') {
-    const form = document.querySelector('#product-form'); let gallery = []; try { gallery = JSON.parse(form.elements.gallery.value); } catch {}
-    if (!gallery.some(item => item.url === url)) gallery.push({ url, alt: media.alt || media.filename });
-    form.elements.gallery.value = JSON.stringify(gallery);
-    document.querySelector('#gallery-preview').insertAdjacentHTML('beforeend', `<img src="${escapeHtml(url)}" alt="${escapeHtml(media.alt || media.filename)}" style="width:66px;height:60px;object-fit:cover">`);
+    const form = document.querySelector('#product-form');
+    const gallery = readProductGallery(form);
+    if (allProductImages(form).length >= 12) notify('A product can have up to 12 photos.', 'error');
+    else if (!gallery.some(item => item.url === url)) {
+      gallery.push({ url, alt: media.alt || media.filename });
+      saveProductGallery(form, gallery);
+    }
   }
   mediaPicker.close();
+}
+
+function readProductGallery(form = document.querySelector('#product-form')) {
+  try { return JSON.parse(form.elements.gallery.value || '[]'); } catch { return []; }
+}
+
+function initializeProductGallery(product, images) {
+  const form = document.querySelector('#product-form');
+  if (!form) return;
+  const cover = images[0] || null;
+  form.elements.image.value = cover?.url || '';
+  form.elements.imageAlt.value = cover?.alt || product.imageAlt || '';
+  const preview = document.querySelector('#product-image-preview');
+  preview.innerHTML = cover
+    ? `<img src="${escapeHtml(cover.url)}" alt="${escapeHtml(cover.alt || '')}">`
+    : '<span class="image-empty">No image selected</span>';
+  const removeCover = document.createElement('button');
+  removeCover.type = 'button';
+  removeCover.className = 'small-button';
+  removeCover.dataset.removeCover = '';
+  removeCover.textContent = 'Remove cover photo';
+  preview.parentElement.append(removeCover);
+  saveProductGallery(form, images.slice(1));
+}
+
+function allProductImages(form = document.querySelector('#product-form')) {
+  const cover = form?.elements.image.value;
+  return [...(cover ? [{ url: cover, alt: form.elements.imageAlt.value || '' }] : []), ...readProductGallery(form)];
+}
+
+function saveProductGallery(form, gallery) {
+  form.elements.gallery.value = JSON.stringify(gallery);
+  document.querySelector('#gallery-preview').innerHTML = gallery.map((item, index) => `<span class="gallery-preview-item"><img src="${escapeHtml(item.url)}" alt="${escapeHtml(item.alt)}"><button type="button" class="small-button" data-set-cover="${index}">Make cover</button><span><button type="button" class="small-button" data-gallery-move="${index}" data-direction="-1" aria-label="Move photo ${index + 2} earlier" ${index === 0 ? 'disabled' : ''}>↑</button><button type="button" class="small-button" data-gallery-move="${index}" data-direction="1" aria-label="Move photo ${index + 2} later" ${index === gallery.length - 1 ? 'disabled' : ''}>↓</button><button type="button" class="small-button" data-remove-gallery="${index}" aria-label="Remove gallery photo ${index + 2}">Remove</button></span></span>`).join('');
+}
+
+function addProductGalleryMedia(mediaItems) {
+  const form = document.querySelector('#product-form');
+  if (!form) return;
+  const gallery = allProductImages(form);
+  const newItems = mediaItems.filter(media => media?.url && !gallery.some(item => item.url === media.url));
+  const availableSlots = Math.max(0, 12 - gallery.length);
+  const attached = newItems.slice(0, availableSlots);
+  saveProductGallery(form, [...readProductGallery(form), ...attached.map(media => ({ url: media.url, alt: media.alt || media.title || media.filename }))]);
+  if (newItems.length > availableSlots) notify('Only the first photos that fit within the 12-photo gallery limit were attached.', 'error');
+  else notify(`${attached.length} photo${attached.length === 1 ? '' : 's'} attached to this product. Save the product to keep the changes.`);
 }
 
 async function openMediaPicker(target) {
@@ -279,7 +356,7 @@ function collectProduct(form, status) {
   return {
     name: data.get('name'), brand: data.get('brand'), slug: data.get('slug'), sku: data.get('sku'), category: data.get('category'),
     shortDescription: data.get('shortDescription'), fullDescription: data.get('fullDescription'), description: data.get('shortDescription'),
-    image: data.get('image') || null, imageAlt: data.get('imageAlt'), gallery, price: data.get('price') || null, salePrice: data.get('salePrice') || null,
+    image: data.get('image') || null, imageAlt: data.get('imageAlt'), gallery, images: [...(data.get('image') ? [{ url: data.get('image'), alt: data.get('imageAlt') || '' }] : []), ...gallery], price: data.get('price') || null, salePrice: data.get('salePrice') || null,
     priceConfirmed: data.has('priceConfirmed'), stockQuantity: data.get('stockQuantity') || null, lowStockThreshold: data.get('lowStockThreshold') || null,
     availability: data.get('availability'), condition: data.get('condition'), specifications, tags: String(data.get('tags') || '').split(',').map(tag => tag.trim()).filter(Boolean),
     featured: data.has('featured'), status
@@ -298,7 +375,9 @@ async function uploadFiles(files, target = null) {
     try {
       const data = JSON.parse(xhr.responseText || '{}');
       if (xhr.status < 200 || xhr.status >= 300) throw new Error(data.error || 'Upload failed.');
-      if (target === 'image') {
+      if (target === 'gallery') {
+        addProductGalleryMedia(data.media);
+      } else if (target === 'image') {
         const media = data.media[0];
         updateSelectedImage(media.url, media, 'image');
         notify('Equipment photo uploaded and attached to this product. Save the product to keep the change.');
@@ -361,6 +440,14 @@ async function handleSubmit(event) {
     event.preventDefault(); try { await saveSettings(form, true); notify('Homepage content saved.'); } catch (error) { notify(error.message, 'error'); }
   } else if (form.id === 'settings-form') {
     event.preventDefault(); try { await saveSettings(form); notify('Website settings saved.'); } catch (error) { notify(error.message, 'error'); }
+  } else if (form.id === 'visitor-settings-form') {
+    event.preventDefault();
+    const data = new FormData(form);
+    try {
+      await api('/api/admin/visitor-notifications', { method: 'PUT', body: { enabled: data.has('enabled'), recipientEmail: data.get('recipientEmail') } });
+      notify('Visitor email settings saved.');
+      loadView('visitors');
+    } catch (error) { notify(error.message, 'error'); }
   } else if (form.id === 'order-edit-form') {
     event.preventDefault(); const data = new FormData(form); const body = Object.fromEntries(data.entries()); delete body.id;
     try { await api(`/api/admin/orders/${data.get('id')}`, { method: 'PUT', body }); document.querySelector('#order-dialog').close(); notify('Order request updated.'); loadView('orders'); } catch (error) { notify(error.message, 'error'); }
@@ -401,6 +488,12 @@ async function handleClick(event) {
   if (target.hasAttribute('data-order-search')) { adminState.search = document.querySelector('#orders-search').value; adminState.status = document.querySelector('#orders-status').value; adminState.page = 1; loadView('orders'); }
   if (target.hasAttribute('data-export-orders')) { window.location.assign(apiUrl('/api/admin/orders.csv')); }
   if (target.hasAttribute('data-preview-home')) window.open('/', '_blank', 'noopener');
+  if (target.hasAttribute('data-test-visitor-email')) {
+    target.disabled = true;
+    try { await api('/api/admin/visitor-notifications/test-email', { method: 'POST', body: {} }); notify('Test email sent. Check the configured recipient inbox.'); }
+    catch (error) { notify(error.message, 'error'); }
+    finally { target.disabled = false; }
+  }
   if (target.dataset.categoryEdit) {
     const category = adminState.categories.find(item => item._id === target.dataset.categoryEdit);
     if (category) {
@@ -426,9 +519,18 @@ async function handleClick(event) {
 
 document.addEventListener('submit', handleSubmit);
 document.addEventListener('click', event => { handleClick(event).catch(error => notify(error.message, 'error')); });
+document.addEventListener('click', event => {
+  const removeButton = event.target.closest('[data-remove-gallery]');
+  if (!removeButton) return;
+  const form = document.querySelector('#product-form');
+  const gallery = readProductGallery(form);
+  gallery.splice(Number(removeButton.dataset.removeGallery), 1);
+  saveProductGallery(form, gallery);
+});
 document.addEventListener('change', event => {
   if (event.target.id === 'media-file-input' || event.target.id === 'media-drop-input') uploadFiles(event.target.files);
   if (event.target.id === 'product-image-file-input') uploadFiles(event.target.files, 'image');
+  if (event.target.id === 'product-gallery-file-input') uploadFiles(event.target.files, 'gallery');
   if (event.target.id === 'select-all') document.querySelectorAll('.product-check').forEach(input => { input.checked = event.target.checked; });
   if (event.target.matches('[data-media-replace]') && event.target.files?.[0]) {
     const form = new FormData(); form.append('image', event.target.files[0]);

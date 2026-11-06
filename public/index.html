@@ -67,7 +67,8 @@
       <p class="catalog-status" id="catalog-status" role="status" aria-live="polite">Loading catalogue...</p>
       <div class="notice" id="catalog-notice" hidden></div>
       <div class="product-grid" id="product-grid" aria-live="polite"></div>
-      <div class="empty-state" id="empty-state" hidden><span class="empty-mark">BM</span><h3>No matching equipment</h3><p>Try another category or clear your search.</p><button class="text-button" id="clear-filters" type="button">Clear filters <span aria-hidden="true">↗</span></button></div>
+      <div class="empty-state" id="empty-state" hidden><span class="empty-mark">BM</span><h3 id="empty-state-title">No matching equipment</h3><p id="empty-state-message">Try another category or clear your search.</p><button class="text-button" id="clear-filters" type="button">Clear filters <span aria-hidden="true">↗</span></button></div>
+      <button class="text-button" id="retry-catalogue" type="button" hidden>Retry loading products</button>
     </section>
 
     <section class="shipping-section section-wrap" id="shipping" aria-labelledby="shipping-title">
@@ -84,10 +85,10 @@
       <div class="order-intro">
         <p class="eyebrow"><span></span> Start a conversation</p>
         <h2 id="order-title">Let’s get your<br><em>game rolling.</em></h2>
-        <p>Share what you’re looking for. Your details will be prepared in a WhatsApp message for you to review and send to the store.</p>
+        <p>Share what you’re looking for, then choose WhatsApp or email to send your enquiry to the shop.</p>
         <div class="order-assurance"><span class="assurance-dot"></span><span>No order is confirmed until the owner confirms it with you.</span></div>
       </div>
-      <form class="order-form" id="order-form" action="/api/orders/whatsapp" method="post" target="_blank">
+      <form class="order-form" id="order-form" action="/api/orders" method="post">
         <div class="form-topline"><span>ORDER ENQUIRY</span><span>01 <i>/</i> 02</span></div>
         <div class="form-grid">
           <label class="field"><span>Your name <b>*</b></span><input name="customerName" autocomplete="name" minlength="2" maxlength="100" required placeholder="Name"></label>
@@ -99,8 +100,11 @@
           <label class="field field-full"><span>Anything else? <small>Optional</small></span><textarea name="requirements" rows="3" maxlength="500" placeholder="Fit, weight, preferences or questions"></textarea></label>
         </div>
         <p class="form-feedback" id="form-feedback" role="status" aria-live="polite"></p>
-        <button class="button button-orange submit-button" type="submit">Continue to WhatsApp <span aria-hidden="true">↗</span></button>
-        <p class="form-footnote">Your message opens as a draft. Review the details and send it to enquire; the store will confirm availability and next steps.</p>
+        <div class="order-channel-actions" role="group" aria-label="Choose how to send your order">
+          <button class="button button-orange" type="button" data-order-action="whatsapp">Send by WhatsApp <span aria-hidden="true">↗</span></button>
+          <button class="button button-orange" type="button" data-order-action="email">Send by Email <span aria-hidden="true">↗</span></button>
+        </div>
+        <p class="form-footnote">Choose WhatsApp or email to send your enquiry. The shop will confirm availability and order details with you.</p>
         <p class="payment-note"><strong>Payment options:</strong> Zelle, Chime, Apple Pay, and Cash App. The shop will provide payment details after confirming your order.</p>
       </form>
     </section>
@@ -111,7 +115,16 @@
       </div>
       <div class="contact-card">
         <p>Need help choosing a ball, checking stock, or confirming a setup? Reach out directly and the owner will advise on the most suitable options.</p>
-        <div class="contact-actions"><a href="#order" class="button button-orange">Start an enquiry <span aria-hidden="true">↗</span></a><a id="email-shop-button" href="mailto:beachgrovebowling@gmail.com" class="text-button">Email the shop</a></div>
+        <div class="contact-actions">
+          <div class="order-now-wrap">
+            <button type="button" class="button button-orange order-now-button" id="contact-order-button">Order Now <span aria-hidden="true">↗</span></button>
+            <div class="order-menu" id="contact-order-menu" hidden>
+              <button class="order-menu-option" type="button" data-order-action="whatsapp">Order on WhatsApp</button>
+              <button class="order-menu-option" type="button" data-order-action="email">Order by Email</button>
+            </div>
+          </div>
+          <a id="email-shop-button" href="mailto:beachgrovebowling@gmail.com" class="text-button">Email the shop</a>
+        </div>
       </div>
     </section>
   </main>
@@ -134,7 +147,10 @@
   <dialog class="product-dialog" id="product-dialog" aria-labelledby="dialog-title">
     <button class="dialog-close" type="button" aria-label="Close product details">×</button>
     <div class="dialog-image" id="dialog-image"></div>
+    <div class="dialog-gallery" id="dialog-gallery" role="group" aria-label="Product images"></div>
     <div class="dialog-copy"><p class="eyebrow eyebrow-dark" id="dialog-brand"></p><h2 id="dialog-title"></h2><p class="dialog-price" id="dialog-price"></p><p id="dialog-description"></p><p class="dialog-availability" id="dialog-availability"></p><button class="button button-orange" id="dialog-order" type="button">Enquire about this item <span aria-hidden="true">↗</span></button></div>
   </dialog>
+
+  <script id="chatway" async="true" src="https://cdn.chatway.app/widget.js?id=5tmXjmjuhhdS"></script>
 </body>
 </html>

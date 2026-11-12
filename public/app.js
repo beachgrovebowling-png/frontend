@@ -142,7 +142,7 @@ function visibleProducts() {
   const search = state.query.toLocaleLowerCase();
   return state.products.filter(product => {
     const matchesCategory = state.category === 'all' || product.category === state.category;
-    const matchesBrand = !state.brand || String(product.brand || '').toLocaleLowerCase() === state.brand.toLocaleLowerCase();
+    const matchesBrand = !state.brand || String(product.brand || '').trim().toLocaleLowerCase() === state.brand.trim().toLocaleLowerCase();
     const matchesSearch = !search || `${product.name} ${product.brand} ${product.description}`.toLocaleLowerCase().includes(search);
     return matchesCategory && matchesBrand && matchesSearch;
   });

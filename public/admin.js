@@ -4,6 +4,7 @@ const content = document.querySelector('#admin-content');
 const toastRegion = document.querySelector('#toast-region');
 const mediaPicker = document.querySelector('#media-picker');
 const csrf = { token: '' };
+const suggestedBallBrands = ['Storm', 'Hammer', 'Roto Grip', 'Ebonite', 'Radical', 'Track', 'Motiv', 'Brunswick', '900 Global', 'Belmo', 'Colombia 300', 'DV8', 'Lane #1', 'Lane Masters'];
 const adminState = { admin: null, view: 'dashboard', page: 1, search: '', status: '', categories: [], brands: [], mediaPage: 1, currentProduct: null, settings: {} };
 const API_BASE = String(window.__API_BASE__ || '').replace(/\/$/, '');
 
@@ -152,6 +153,7 @@ async function openProductEditor(productId = null) {
     productId ? api(`/api/admin/products/${encodeURIComponent(productId)}`) : Promise.resolve({ product: {} })
   ]);
   adminState.categories = categoryData.categories;
+  adminState.brands = categoryData.brands;
   productForm(productData.product);
 }
 
@@ -168,7 +170,7 @@ function productForm(product = {}) {
   content.innerHTML = `${pageHeader(isEdit ? 'Edit product' : 'Add product', 'Only publish verified product details, prices, and inventory.', '<button class="admin-button secondary" data-go="products">← Product list</button>')}
   <form id="product-form"><div class="editor-layout"><section class="panel"><div class="panel-body">
     <div class="form-section"><h3>Product details</h3><div class="admin-form-grid">
-      ${field('name', 'Product name', product.name, true)}${field('brand', 'Brand', product.brand, true)}${field('slug', 'URL slug', product.slug)}${field('sku', 'SKU / internal code', product.sku)}
+      ${field('name', 'Product name', product.name, true)}<label class="setting-field">Brand<select class="admin-select" name="brand" required><option value="">Choose a brand</option>${[...new Set([...adminState.brands.map(brand => brand.name), ...suggestedBallBrands, ...(product.brand ? [product.brand] : [])])].map(brand => `<option value="${escapeHtml(brand)}" ${product.brand === brand ? 'selected' : ''}>${escapeHtml(brand)}</option>`).join('')}</select><span class="hint">Choose a suggested brand or add a new one under Categories & brands.</span></label>${field('slug', 'URL slug', product.slug)}${field('sku', 'SKU / internal code', product.sku)}
       <label class="setting-field">Category<select class="admin-select" name="category" required>${[...new Map([ ...['bowling-ball','accessory','bag','apparel','other'].map(c => [c, { slug: c, name: c.replaceAll('-', ' ') }]), ...adminState.categories.map(c => [c.slug, c]) ]).values()].map(c => `<option value="${escapeHtml(c.slug)}" ${(product.category || 'bowling-ball') === c.slug ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}</select></label>
       <label class="setting-field">Condition<select name="condition" class="admin-select">${['unspecified','new','used','refurbished'].map(c => `<option value="${c}" ${(product.condition || 'unspecified') === c ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
       ${field('shortDescription', 'Short description', product.shortDescription || product.description, false, 'text', 'A concise public card description')}

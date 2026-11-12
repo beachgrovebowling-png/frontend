@@ -67,18 +67,18 @@
         <label class="brand-filter-wrap"><span>Brand</span><select id="brand-filter" aria-label="Filter products by brand"><option value="">All brands</option></select></label>
         <label class="search-box"><span class="sr-only">Search products</span><span aria-hidden="true">⌕</span><input id="product-search" type="search" placeholder="Search equipment"></label>
       </div>
-      <div class="brand-directory" id="brand-directory" aria-label="Browse products by brand">
+      <div class="brand-directory" id="brand-directory" aria-label="Browse products by brand" hidden>
         <h3>Shop by brand</h3>
         <div class="brand-directory-list" id="brand-directory-list"></div>
         <p id="brand-directory-empty" hidden>No brands have been published yet.</p>
       </div>
-      <div class="brand-results-heading" id="brand-results-heading" hidden>
-        <h3 id="brand-results-title"></h3>
+      <div class="brand-results-heading" id="brand-results-heading">
+        <h3 id="brand-results-title">All products</h3>
         <button class="text-button" id="browse-brands" type="button">Browse brands ↑</button>
       </div>
       <p class="catalog-status" id="catalog-status" role="status" aria-live="polite">Loading catalogue...</p>
       <div class="notice" id="catalog-notice" hidden></div>
-      <div class="product-grid" id="product-grid" aria-live="polite" hidden></div>
+      <div class="product-grid" id="product-grid" aria-live="polite"></div>
       <div class="empty-state" id="empty-state" hidden><span class="empty-mark">BM</span><h3 id="empty-state-title">No matching equipment</h3><p id="empty-state-message">Try another category or clear your search.</p><button class="text-button" id="clear-filters" type="button">Clear filters <span aria-hidden="true">↗</span></button></div>
       <button class="text-button" id="retry-catalogue" type="button" hidden>Retry loading products</button>
     </section>

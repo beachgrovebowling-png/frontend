@@ -1,4 +1,4 @@
-const state = { products: [], category: 'all', brand: '', brandSelected: false, query: '', whatsappConfigured: false, whatsappNumber: '', contactEmail: '', submittedOrder: null, cart: loadCart() };
+const state = { products: [], category: 'all', brand: '', brandSelected: true, query: '', whatsappConfigured: false, whatsappNumber: '', contactEmail: '', submittedOrder: null, cart: loadCart() };
 const API_BASE = String(window.__API_BASE__ || '').replace(/\/$/, '');
 const productGrid = document.querySelector('#product-grid');
 const catalogStatus = document.querySelector('#catalog-status');
@@ -674,7 +674,7 @@ dialog.addEventListener('click', event => { if (event.target === dialog) dialog.
 document.querySelector('#clear-filters').addEventListener('click', () => {
   state.category = 'all';
   state.brand = '';
-  state.brandSelected = false;
+  state.brandSelected = true;
   state.query = '';
   brandFilter.value = '';
   document.querySelector('#product-search').value = '';

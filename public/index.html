@@ -27,11 +27,6 @@
     </div>
     <nav class="main-nav" id="main-menu" aria-label="Main navigation" hidden>
       <a href="#top">Home</a>
-      <a href="#catalogue" data-category-link="all">Shop All</a>
-      <a href="#catalogue" data-category-link="performance-bowling-balls">Performance Bowling Balls</a>
-      <a href="#catalogue" data-category-link="beginner-bowling-balls">Beginner Bowling Balls</a>
-      <a href="#catalogue" data-category-link="spare-bowling-balls">Spare Bowling Balls</a>
-      <a href="#catalogue" data-category-link="bowling-ball-accessories">Bowling Ball Accessories</a>
       <a href="#shipping">Shipping Information</a>
       <a href="#faq">FAQ</a>
       <a href="#contact">Contact Us</a>
@@ -57,12 +52,13 @@
         <p class="section-aside">The current catalogue, in one place.<br>Ask us about anything you need.</p>
       </div>
       <div class="catalog-controls">
-        <div class="filter-list" role="group" aria-label="Filter products by category">
-          <button class="filter-button is-active" type="button" data-category="all" aria-pressed="true">All equipment</button>
-          <button class="filter-button" type="button" data-category="bowling-ball" aria-pressed="false">Bowling balls</button>
-          <button class="filter-button" type="button" data-category="accessory" aria-pressed="false">Accessories</button>
-          <button class="filter-button" type="button" data-category="bag" aria-pressed="false">Bags</button>
-          <button class="filter-button" type="button" data-category="apparel" aria-pressed="false">Apparel</button>
+        <div class="category-menu">
+          <button class="category-menu-toggle" id="category-menu-toggle" type="button" aria-expanded="false" aria-controls="category-filter-list">
+            Categories <span aria-hidden="true">⌄</span>
+          </button>
+          <div class="filter-list" id="category-filter-list" role="group" aria-label="Filter products by category">
+            <button class="filter-button is-active" type="button" data-category="all" aria-pressed="true">All equipment</button>
+          </div>
         </div>
         <label class="search-box"><span class="sr-only">Search products</span><span aria-hidden="true">⌕</span><input id="product-search" type="search" placeholder="Search equipment"></label>
       </div>
@@ -216,6 +212,8 @@
       <div class="cart-total"><span>Subtotal</span><strong id="cart-subtotal">$0.00</strong></div>
       <p class="cart-note">Any items without confirmed pricing require owner confirmation before a final total is set.</p>
       <button type="button" class="button button-orange cart-submit" id="cart-submit">Proceed to WhatsApp <span aria-hidden="true">↗</span></button>
+      <button type="button" class="button cart-email-submit" id="cart-email-submit">Order by Email <span aria-hidden="true">↗</span></button>
+      <p class="cart-feedback" id="cart-feedback" role="status" aria-live="polite"></p>
     </div>
   </aside>
 

@@ -17,10 +17,14 @@ const cartItems = document.querySelector('#cart-items');
 const cartToggle = document.querySelector('#cart-toggle');
 const cartClose = document.querySelector('#cart-close');
 const cartSubmit = document.querySelector('#cart-submit');
+const cartEmailSubmit = document.querySelector('#cart-email-submit');
+const cartFeedback = document.querySelector('#cart-feedback');
 const cartCount = document.querySelector('#cart-count');
 const cartSubtotal = document.querySelector('#cart-subtotal');
 const menuToggle = document.querySelector('#menu-toggle');
 const mainMenu = document.querySelector('#main-menu');
+const categoryMenuToggle = document.querySelector('#category-menu-toggle');
+const categoryFilterList = document.querySelector('#category-filter-list');
 
 const categoryLabels = {
   all: 'All equipment',
@@ -161,7 +165,7 @@ function renderProducts() {
         <div class="product-title-row"><h3 class="product-title">${escapeHtml(product.name)}</h3><p class="product-price">${escapeHtml(priceLabel(product))}</p></div>
         <p class="product-description">${escapeHtml(product.description)}</p>
         <div class="product-actions">
-          <button class="product-order" type="button" data-order="${escapeHtml(product.id)}">Enquire <span aria-hidden="true">↗</span></button>
+          <button class="product-order" type="button" data-order="${escapeHtml(product.id)}">Buy now <span aria-hidden="true">↗</span></button>
           <button class="product-details" type="button" data-details="${escapeHtml(product.id)}">Details</button>
           <button class="product-cart" type="button" data-cart="${escapeHtml(product.id)}">Add to cart</button>
         </div>
@@ -279,17 +283,15 @@ function safeLocalOrHttpsUrl(value) {
 }
 
 function applyCategoryFilters(categories) {
-  if (!Array.isArray(categories) || !categories.length) return;
-  const list = document.querySelector('.filter-list');
-  if (!list) return;
-  list.replaceChildren();
+  if (!Array.isArray(categories)) throw new Error('Catalogue categories response is invalid.');
+  categoryFilterList.replaceChildren();
   const allButton = document.createElement('button');
   allButton.type = 'button';
   allButton.className = 'filter-button is-active';
   allButton.dataset.category = 'all';
   allButton.setAttribute('aria-pressed', 'true');
   allButton.textContent = 'All equipment';
-  list.append(allButton);
+  categoryFilterList.append(allButton);
   categories.forEach(category => {
     const button = document.createElement('button');
     button.type = 'button';
@@ -297,7 +299,7 @@ function applyCategoryFilters(categories) {
     button.dataset.category = category.slug;
     button.setAttribute('aria-pressed', 'false');
     button.textContent = category.name;
-    list.append(button);
+    categoryFilterList.append(button);
   });
 }
 
@@ -474,13 +476,21 @@ function handleSelectCategory(button) {
     filter.classList.toggle('is-active', active);
     filter.setAttribute('aria-pressed', String(active));
   });
+  categoryFilterList.classList.remove('is-open');
+  categoryMenuToggle.setAttribute('aria-expanded', 'false');
   renderProducts();
 }
 
-document.querySelector('.filter-list').addEventListener('click', event => {
+categoryFilterList.addEventListener('click', event => {
   const button = event.target.closest('[data-category]');
   if (!button) return;
   handleSelectCategory(button);
+});
+
+categoryMenuToggle.addEventListener('click', () => {
+  const isOpen = categoryMenuToggle.getAttribute('aria-expanded') === 'true';
+  categoryMenuToggle.setAttribute('aria-expanded', String(!isOpen));
+  categoryFilterList.classList.toggle('is-open', !isOpen);
 });
 
 document.querySelectorAll('[data-category-link]').forEach(link => {
@@ -510,6 +520,12 @@ document.addEventListener('click', event => {
     mainMenu.hidden = true;
     menuToggle.setAttribute('aria-expanded', 'false');
   }
+  if (categoryFilterList.classList.contains('is-open')
+    && !event.target.closest('#category-filter-list')
+    && !event.target.closest('#category-menu-toggle')) {
+    categoryFilterList.classList.remove('is-open');
+    categoryMenuToggle.setAttribute('aria-expanded', 'false');
+  }
 });
 
 document.addEventListener('keydown', event => {
@@ -517,6 +533,11 @@ document.addEventListener('keydown', event => {
     mainMenu.hidden = true;
     menuToggle.setAttribute('aria-expanded', 'false');
     menuToggle.focus();
+  }
+  if (event.key === 'Escape' && categoryFilterList.classList.contains('is-open')) {
+    categoryFilterList.classList.remove('is-open');
+    categoryMenuToggle.setAttribute('aria-expanded', 'false');
+    categoryMenuToggle.focus();
   }
 });
 
@@ -722,6 +743,42 @@ cartSubmit.addEventListener('click', () => {
   document.querySelector('#order').scrollIntoView({ behavior: 'smooth' });
   formFeedback.textContent = 'Cart items are ready for enquiry. Review details and continue to WhatsApp.';
   closeCart();
+});
+
+cartEmailSubmit.addEventListener('click', () => {
+  if (!state.cart.length) {
+    cartFeedback.textContent = 'Your cart is empty. Add an item before ordering by email.';
+    return;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.contactEmail)) {
+    cartFeedback.textContent = 'The shop email is not configured yet. Please contact the shop another way.';
+    return;
+  }
+
+  const total = state.cart.reduce((sum, item) => {
+    const product = state.products.find(entry => entry.id === item.productId || entry.slug === item.productId)
+      || { slug: item.slug, price: item.price };
+    const unitPrice = cartItemPrice(product);
+    return sum + (Number.isFinite(unitPrice) ? unitPrice * item.quantity : 0);
+  }, 0);
+  const lines = [
+    'Hello BowlersMechanic,',
+    '',
+    'I would like to order:',
+    ...state.cart.map(item => {
+      const product = state.products.find(entry => entry.id === item.productId || entry.slug === item.productId)
+        || { name: item.name, brand: item.brand, price: item.price, slug: item.slug };
+      const weight = item.weightValue ? ` (${item.weightValue} lb)` : '';
+      return `- ${product.brand || item.brand || 'Product'} ${product.name || item.name || 'Item'}${weight} × ${item.quantity} — ${priceLabel(product)} each`;
+    }),
+    '',
+    `Estimated subtotal: $${total.toFixed(2)} USD`,
+    'Please confirm availability, final pricing, and shipping.'
+  ];
+  const subject = encodeURIComponent('BowlersMechanic cart order enquiry');
+  const body = encodeURIComponent(lines.join('\n'));
+  window.location.href = `mailto:${state.contactEmail}?subject=${subject}&body=${body}`;
+  cartFeedback.textContent = 'Your cart order is ready in an email draft to the shop.';
 });
 
 trackVisitor();

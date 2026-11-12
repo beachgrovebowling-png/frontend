@@ -331,9 +331,11 @@ function applyBrandFilters(brands) {
   navBrandList.replaceChildren();
   brandDirectoryList.replaceChildren();
 
-  brands.forEach(brand => {
-    if (!brand || typeof brand.name !== 'string' || !brand.name.trim()) return;
-    const name = brand.name.trim();
+  const names = [...new Set(brands.map(brand => {
+    const name = typeof brand === 'string' ? brand : brand?.name;
+    return typeof name === 'string' ? name.trim() : '';
+  }).filter(Boolean))];
+  names.forEach(name => {
     brandFilter.add(new Option(name, name));
 
     const link = document.createElement('a');
@@ -349,7 +351,7 @@ function applyBrandFilters(brands) {
     button.textContent = name;
     brandDirectoryList.append(button);
   });
-  brandDirectoryEmpty.hidden = brands.length > 0;
+  brandDirectoryEmpty.hidden = names.length > 0;
 }
 
 async function loadProducts() {

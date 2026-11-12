@@ -5,7 +5,7 @@ const toastRegion = document.querySelector('#toast-region');
 const mediaPicker = document.querySelector('#media-picker');
 const csrf = { token: '' };
 const suggestedBallBrands = ['Storm', 'Hammer', 'Roto Grip', 'Ebonite', 'Radical', 'Track', 'Motiv', 'Brunswick', '900 Global', 'Belmo', 'Colombia 300', 'DV8', 'Lane #1', 'Lane Masters'];
-const adminState = { admin: null, view: 'dashboard', page: 1, search: '', status: '', categories: [], brands: [], mediaPage: 1, currentProduct: null, settings: {} };
+const adminState = { admin: null, view: 'dashboard', page: 1, search: '', status: '', categories: [], mediaPage: 1, currentProduct: null, settings: {} };
 const API_BASE = String(window.__API_BASE__ || '').replace(/\/$/, '');
 
 function apiUrl(path) {
@@ -153,7 +153,6 @@ async function openProductEditor(productId = null) {
     productId ? api(`/api/admin/products/${encodeURIComponent(productId)}`) : Promise.resolve({ product: {} })
   ]);
   adminState.categories = categoryData.categories;
-  adminState.brands = categoryData.brands;
   productForm(productData.product);
 }
 
@@ -170,7 +169,7 @@ function productForm(product = {}) {
   content.innerHTML = `${pageHeader(isEdit ? 'Edit product' : 'Add product', 'Only publish verified product details, prices, and inventory.', '<button class="admin-button secondary" data-go="products">← Product list</button>')}
   <form id="product-form"><div class="editor-layout"><section class="panel"><div class="panel-body">
     <div class="form-section"><h3>Product details</h3><div class="admin-form-grid">
-      ${field('name', 'Product name', product.name, true)}<label class="setting-field">Brand<select class="admin-select" name="brand" required><option value="">Choose a brand</option>${[...new Set([...adminState.brands.map(brand => brand.name), ...suggestedBallBrands, ...(product.brand ? [product.brand] : [])])].map(brand => `<option value="${escapeHtml(brand)}" ${product.brand === brand ? 'selected' : ''}>${escapeHtml(brand)}</option>`).join('')}</select><span class="hint">Choose a suggested brand or add a new one under Categories & brands.</span></label>${field('slug', 'URL slug', product.slug)}${field('sku', 'SKU / internal code', product.sku)}
+      ${field('name', 'Product name', product.name, true)}<label class="setting-field">Brand<select class="admin-select" name="brand" required><option value="">Choose a brand</option>${suggestedBallBrands.map(brand => `<option value="${escapeHtml(brand)}" ${product.brand === brand ? 'selected' : ''}>${escapeHtml(brand)}</option>`).join('')}</select><span class="hint">Choose one of the supported bowling brands.</span></label>${field('slug', 'URL slug', product.slug)}${field('sku', 'SKU / internal code', product.sku)}
       <label class="setting-field">Category<select class="admin-select" name="category" required>${[...new Map([ ...['bowling-ball','accessory','bag','apparel','other'].map(c => [c, { slug: c, name: c.replaceAll('-', ' ') }]), ...adminState.categories.map(c => [c.slug, c]) ]).values()].map(c => `<option value="${escapeHtml(c.slug)}" ${(product.category || 'bowling-ball') === c.slug ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}</select></label>
       <label class="setting-field">Condition<select name="condition" class="admin-select">${['unspecified','new','used','refurbished'].map(c => `<option value="${c}" ${(product.condition || 'unspecified') === c ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
       ${field('shortDescription', 'Short description', product.shortDescription || product.description, false, 'text', 'A concise public card description')}
@@ -208,10 +207,10 @@ function mediaCard(media) {
 }
 
 async function renderCategories() {
-  const data = await api('/api/admin/categories'); adminState.categories = data.categories; adminState.brands = data.brands;
+  const data = await api('/api/admin/categories'); adminState.categories = data.categories;
   content.innerHTML = `${pageHeader('Categories & brands', 'Organize verified inventory and public catalogue filters.')}
   <div class="dashboard-columns"><section class="panel"><div class="panel-heading"><h2>Product categories</h2></div><div class="panel-body"><form id="category-form" class="toolbar"><input class="admin-input" name="name" required placeholder="New category name"><input class="admin-input" name="description" placeholder="Description"><button class="admin-button primary">Add category</button></form><div class="table-wrap"><table><thead><tr><th>Category</th><th>Slug</th><th>Visibility</th><th>Products</th><th></th></tr></thead><tbody>${data.categories.map(category => `<tr><td><span class="table-title">${escapeHtml(category.name)}</span><span class="table-sub">${escapeHtml(category.description || '')}</span></td><td>${escapeHtml(category.slug)}</td><td>${statusPill(category.published ? 'published' : 'draft')}</td><td class="category-usage" data-category="${escapeHtml(category.slug)}">—</td><td><div class="row-actions"><button data-category-edit="${escapeHtml(category._id)}">Edit</button><button data-category-visibility="${escapeHtml(category._id)}" data-published="${!category.published}">${category.published ? 'Hide' : 'Publish'}</button><button data-category-delete="${escapeHtml(category._id)}">Delete</button></div></td></tr>`).join('') || '<tr><td colspan="5" class="empty-row">No categories added.</td></tr>'}</tbody></table></div></div></section>
-  <section class="panel"><div class="panel-heading"><h2>Brands</h2></div><div class="panel-body"><form id="brand-form" class="toolbar"><input class="admin-input" name="name" required placeholder="Brand name"><button class="admin-button primary">Add brand</button></form>${data.brands.map(brand => `<div class="account-row"><span><b>${escapeHtml(brand.name)}</b><small class="table-sub">${escapeHtml(brand.slug)}</small></span>${statusPill(brand.published ? 'published' : 'draft')}<div class="row-actions"><button data-brand-edit="${escapeHtml(brand._id)}">Edit</button><button data-brand-delete="${escapeHtml(brand._id)}">Delete</button></div></div>`).join('') || '<div class="no-data">No managed brands yet.</div>'}</div></section></div>`;
+  <section class="panel"><div class="panel-heading"><h2>Supported bowling brands</h2></div><div class="panel-body">${suggestedBallBrands.map(brand => `<div class="account-row"><b>${escapeHtml(brand)}</b></div>`).join('')}<p class="table-sub">Only these brands can be selected for products and shown in the public catalogue.</p></div></section></div>`;
   const products = await api('/api/admin/products?limit=100');
   document.querySelectorAll('.category-usage').forEach(node => node.textContent = products.products.filter(product => product.category === node.dataset.category).length);
 }
@@ -435,9 +434,6 @@ async function handleSubmit(event) {
   } else if (form.id === 'category-form') {
     event.preventDefault(); const data = new FormData(form);
     try { await api('/api/admin/categories', { method: 'POST', body: { name: data.get('name'), description: data.get('description') } }); notify('Category added.'); loadView('categories'); } catch (error) { notify(error.message, 'error'); }
-  } else if (form.id === 'brand-form') {
-    event.preventDefault(); const data = new FormData(form);
-    try { await api('/api/admin/brands', { method: 'POST', body: { name: data.get('name') } }); notify('Brand added.'); loadView('categories'); } catch (error) { notify(error.message, 'error'); }
   } else if (form.id === 'homepage-form') {
     event.preventDefault(); try { await saveSettings(form, true); notify('Homepage content saved.'); } catch (error) { notify(error.message, 'error'); }
   } else if (form.id === 'settings-form') {
@@ -509,11 +505,6 @@ async function handleClick(event) {
     const category = adminState.categories.find(item => item._id === target.dataset.categoryVisibility);
     if (category) { try { await api(`/api/admin/categories/${category._id}`, { method: 'PUT', body: { ...category, published: target.dataset.published === 'true' } }); notify('Category visibility updated.'); loadView('categories'); } catch (error) { notify(error.message, 'error'); } }
   }
-  if (target.dataset.brandEdit) {
-    const brand = adminState.brands.find(item => item._id === target.dataset.brandEdit);
-    if (brand) { const name = prompt('Brand name:', brand.name); if (name !== null) { try { await api(`/api/admin/brands/${brand._id}`, { method: 'PUT', body: { ...brand, name } }); notify('Brand updated.'); loadView('categories'); } catch (error) { notify(error.message, 'error'); } } }
-  }
-  if (target.dataset.brandDelete) askConfirm('Delete this brand? Brands assigned to products are protected.', async () => { try { await api(`/api/admin/brands/${target.dataset.brandDelete}`, { method: 'DELETE' }); notify('Brand deleted.'); loadView('categories'); } catch (error) { notify(error.message, 'error'); } });
   if (target.dataset.categoryDelete) askConfirm('Delete this category? If products use it, the server will prevent deletion until you reassign them.', async () => { try { await api(`/api/admin/categories/${target.dataset.categoryDelete}`, { method: 'DELETE', body: {} }); notify('Category deleted.'); loadView('categories'); } catch (error) { notify(error.message, 'error'); } });
   if (target.dataset.toggleAdmin) { const active = target.dataset.active === 'true'; askConfirm(`${active ? 'Activate' : 'Deactivate'} this administrator?`, async () => { try { await api(`/api/admin/admins/${target.dataset.toggleAdmin}`, { method: 'PUT', body: { active } }); notify('Admin account updated.'); loadView('account'); } catch (error) { notify(error.message, 'error'); } }); }
   if (target.hasAttribute('data-close-dialog')) target.closest('dialog')?.close();
@@ -543,7 +534,7 @@ document.addEventListener('input', event => {
   if (event.target.matches('[name="headline"]')) document.querySelector('#homepage-preview-title').textContent = event.target.value;
   if (event.target.matches('[name="subtitle"]')) document.querySelector('#homepage-preview-subtitle').textContent = event.target.value;
 });
-document.addEventListener('submit', event => { if (event.target.id !== 'login-form' && event.target.id !== 'product-form' && event.target.id !== 'category-form' && event.target.id !== 'brand-form' && event.target.id !== 'homepage-form' && event.target.id !== 'settings-form' && event.target.id !== 'order-edit-form' && event.target.id !== 'password-form' && event.target.id !== 'admin-create-form') event.preventDefault(); });
+document.addEventListener('submit', event => { if (event.target.id !== 'login-form' && event.target.id !== 'product-form' && event.target.id !== 'category-form' && event.target.id !== 'homepage-form' && event.target.id !== 'settings-form' && event.target.id !== 'order-edit-form' && event.target.id !== 'password-form' && event.target.id !== 'admin-create-form') event.preventDefault(); });
 
 document.querySelector('#drop-zone')?.addEventListener('dragover', event => { event.preventDefault(); event.currentTarget.classList.add('dragover'); });
 document.addEventListener('dragover', event => { if (event.target.closest('#drop-zone')) event.preventDefault(); });

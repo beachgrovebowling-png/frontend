@@ -1,4 +1,4 @@
-const state = { products: [], category: 'all', query: '', whatsappConfigured: false, whatsappNumber: '', contactEmail: '', submittedOrder: null, cart: loadCart() };
+const state = { products: [], category: 'all', brand: '', brandSelected: false, query: '', whatsappConfigured: false, whatsappNumber: '', contactEmail: '', submittedOrder: null, cart: loadCart() };
 const API_BASE = String(window.__API_BASE__ || '').replace(/\/$/, '');
 const productGrid = document.querySelector('#product-grid');
 const catalogStatus = document.querySelector('#catalog-status');
@@ -25,6 +25,14 @@ const menuToggle = document.querySelector('#menu-toggle');
 const mainMenu = document.querySelector('#main-menu');
 const categoryMenuToggle = document.querySelector('#category-menu-toggle');
 const categoryFilterList = document.querySelector('#category-filter-list');
+const brandFilter = document.querySelector('#brand-filter');
+const navBrandList = document.querySelector('#nav-brand-list');
+const brandDirectory = document.querySelector('#brand-directory');
+const brandDirectoryList = document.querySelector('#brand-directory-list');
+const brandDirectoryEmpty = document.querySelector('#brand-directory-empty');
+const brandResultsHeading = document.querySelector('#brand-results-heading');
+const brandResultsTitle = document.querySelector('#brand-results-title');
+const catalogControls = document.querySelector('.catalog-controls');
 
 const categoryLabels = {
   all: 'All equipment',
@@ -134,12 +142,26 @@ function visibleProducts() {
   const search = state.query.toLocaleLowerCase();
   return state.products.filter(product => {
     const matchesCategory = state.category === 'all' || product.category === state.category;
+    const matchesBrand = !state.brand || String(product.brand || '').toLocaleLowerCase() === state.brand.toLocaleLowerCase();
     const matchesSearch = !search || `${product.name} ${product.brand} ${product.description}`.toLocaleLowerCase().includes(search);
-    return matchesCategory && matchesSearch;
+    return matchesCategory && matchesBrand && matchesSearch;
   });
 }
 
 function renderProducts() {
+  const hasSelectedBrand = state.brandSelected;
+  brandDirectory.hidden = hasSelectedBrand;
+  brandResultsHeading.hidden = !hasSelectedBrand;
+  catalogControls.hidden = !hasSelectedBrand;
+  catalogStatus.hidden = !hasSelectedBrand;
+  catalogNotice.hidden = !hasSelectedBrand || !catalogNotice.textContent;
+  productGrid.hidden = !hasSelectedBrand;
+  if (!hasSelectedBrand) {
+    productGrid.replaceChildren();
+    emptyState.hidden = true;
+    return;
+  }
+  brandResultsTitle.textContent = state.brand || 'All products';
   const products = visibleProducts();
   productGrid.replaceChildren();
   emptyState.hidden = products.length > 0;
@@ -147,7 +169,7 @@ function renderProducts() {
   document.querySelector('#empty-state-title').textContent = noPublishedProducts ? 'No published products' : 'No matching equipment';
   document.querySelector('#empty-state-message').textContent = noPublishedProducts
     ? 'There are no published products available right now.'
-    : 'Try another category or clear your search.';
+    : 'Try another category or brand, or clear your search.';
   document.querySelector('#clear-filters').hidden = noPublishedProducts;
   products.forEach((product, index) => {
     const images = productImages(product);
@@ -303,6 +325,33 @@ function applyCategoryFilters(categories) {
   });
 }
 
+function applyBrandFilters(brands) {
+  if (!Array.isArray(brands)) throw new Error('Catalogue brands response is invalid.');
+  brandFilter.replaceChildren(new Option('All brands', ''));
+  navBrandList.replaceChildren();
+  brandDirectoryList.replaceChildren();
+
+  brands.forEach(brand => {
+    if (!brand || typeof brand.name !== 'string' || !brand.name.trim()) return;
+    const name = brand.name.trim();
+    brandFilter.add(new Option(name, name));
+
+    const link = document.createElement('a');
+    link.href = '#catalogue';
+    link.dataset.brandLink = name;
+    link.textContent = name;
+    navBrandList.append(link);
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'brand-directory-button';
+    button.dataset.brandSelect = name;
+    button.textContent = name;
+    brandDirectoryList.append(button);
+  });
+  brandDirectoryEmpty.hidden = brands.length > 0;
+}
+
 async function loadProducts() {
   retryCatalogue.hidden = true;
   catalogNotice.hidden = true;
@@ -317,6 +366,7 @@ async function loadProducts() {
     state.whatsappConfigured = Boolean(data.whatsappConfigured);
     applyPublicSettings(data.site);
     applyCategoryFilters(data.categories || []);
+    applyBrandFilters(data.brands || []);
     populateProductSelect();
     if (!state.whatsappConfigured) {
       catalogNotice.hidden = false;
@@ -509,6 +559,56 @@ document.querySelectorAll('[data-category-link]').forEach(link => {
   });
 });
 
+navBrandList.addEventListener('click', event => {
+  const link = event.target.closest('[data-brand-link]');
+  if (!link) return;
+  event.preventDefault();
+  selectBrand(link.dataset.brandLink || '');
+  document.querySelector('#catalogue').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  link.closest('.nav-products').open = false;
+  mainMenu.hidden = true;
+  menuToggle.setAttribute('aria-expanded', 'false');
+});
+
+function selectBrand(name) {
+  state.brand = name;
+  state.brandSelected = true;
+  state.category = 'all';
+  state.query = '';
+  brandFilter.value = name;
+  document.querySelector('#product-search').value = '';
+  const allCategoryButton = categoryFilterList.querySelector('[data-category="all"]');
+  if (allCategoryButton) {
+    document.querySelectorAll('.filter-button').forEach(button => {
+      const active = button === allCategoryButton;
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-pressed', String(active));
+    });
+  }
+  renderProducts();
+}
+
+brandDirectoryList.addEventListener('click', event => {
+  const button = event.target.closest('[data-brand-select]');
+  if (button) selectBrand(button.dataset.brandSelect);
+});
+
+document.querySelector('#browse-brands').addEventListener('click', () => {
+  state.brand = '';
+  state.brandSelected = false;
+  state.category = 'all';
+  state.query = '';
+  brandFilter.value = '';
+  document.querySelector('#product-search').value = '';
+  renderProducts();
+});
+
+brandFilter.addEventListener('change', event => {
+  state.brand = event.target.value;
+  state.brandSelected = true;
+  renderProducts();
+});
+
 menuToggle.addEventListener('click', () => {
   const isOpen = menuToggle.getAttribute('aria-expanded') === 'true';
   menuToggle.setAttribute('aria-expanded', String(!isOpen));
@@ -571,10 +671,14 @@ dialog.addEventListener('click', event => { if (event.target === dialog) dialog.
 
 document.querySelector('#clear-filters').addEventListener('click', () => {
   state.category = 'all';
+  state.brand = '';
+  state.brandSelected = false;
   state.query = '';
+  brandFilter.value = '';
   document.querySelector('#product-search').value = '';
   const button = document.querySelector('.filter-button[data-category="all"]');
   if (button) handleSelectCategory(button);
+  else renderProducts();
 });
 
 function closeOrderMenus() {

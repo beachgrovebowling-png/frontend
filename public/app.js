@@ -184,9 +184,9 @@ function renderProducts() {
     card.style.animationDelay = `${Math.min(index * 60, 240)}ms`;
     card.innerHTML = `
       <div class="product-visual">
-        <label class="quick-select" aria-label="Select ${escapeHtml(product.name)} for quick order">
+        <label class="quick-select" aria-label="Select ${escapeHtml(product.name)} to buy">
           <input type="checkbox" data-quick-select="${escapeHtml(product.id)}" ${selected ? 'checked' : ''}>
-          <span>Quick order</span>
+          <span class="quick-select-box" aria-hidden="true"></span>
         </label>
         ${images.length ? `<img class="product-image" src="${escapeHtml(images[0].url)}" alt="${escapeHtml(images[0].alt || product.imageAlt || `${product.brand} ${product.name}`)}" loading="lazy">` : productVisual(product)}
         ${images.length > 1 ? `<button class="card-image-arrow previous" type="button" data-image-step="-1" aria-label="Previous ${escapeHtml(product.name)} photo">?</button><button class="card-image-arrow next" type="button" data-image-step="1" aria-label="Next ${escapeHtml(product.name)} photo">?</button><span class="card-image-count" aria-live="polite">1 / ${images.length}</span>` : ''}

@@ -120,6 +120,15 @@ button { color: inherit; }
 .product-placeholder { width: 100%; height: 100%; min-height: 110px; display: grid; place-items: center; background: rgba(255,255,255,.28); color: #625f5a; font: 600 12px var(--body); }
 .product-tag { position: absolute; top: 13px; left: 13px; z-index: 2; background: var(--ink); color: white; padding: 7px 9px; text-transform: uppercase; font-size: 8px; font-weight: 700; letter-spacing: .7px; }
 .product-tag.featured { background: var(--orange); color: var(--ink); }
+.quick-select { position: absolute; top: 10px; right: 10px; z-index: 4; display: inline-grid; place-items: center; width: 30px; height: 30px; cursor: pointer; }
+.quick-select input { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.quick-select-box { width: 28px; height: 28px; display: grid; place-items: center; border: 2px solid rgba(23,23,23,.45); background: rgba(255,255,255,.92); box-shadow: 0 2px 8px rgba(0,0,0,.12); transition: background .15s, border-color .15s, transform .15s; }
+.quick-select-box::after { content: ""; width: 8px; height: 14px; border-right: 2.5px solid #fff; border-bottom: 2.5px solid #fff; transform: rotate(45deg) scale(0); transform-origin: center; transition: transform .15s ease; margin-top: -2px; }
+.quick-select input:checked + .quick-select-box { background: var(--orange); border-color: var(--orange-dark); }
+.quick-select input:checked + .quick-select-box::after { transform: rotate(45deg) scale(1); }
+.quick-select input:focus-visible + .quick-select-box { outline: 2px solid var(--secondary); outline-offset: 2px; }
+.quick-select:hover .quick-select-box { transform: scale(1.04); }
+.product-card.is-selected { border-color: var(--orange-dark); box-shadow: inset 0 0 0 1px var(--orange-dark); }
 .product-info { padding: 17px 17px 16px; }
 .product-brand { margin: 0 0 6px; color: #807b75; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
 .product-title-row { display: flex; justify-content: space-between; gap: 10px; align-items: start; }

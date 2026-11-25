@@ -486,6 +486,7 @@ function updateQuickOrderButton() {
   const count = state.quickSelection.size;
   quickOrderSelected.textContent = `Buy selected (${count})`;
   quickOrderSelected.disabled = count === 0;
+  quickOrderSelected.classList.toggle('is-floating', count > 0);
 }
 
 function syncOrderWeightField(productId, preferredWeight = '') {
@@ -741,8 +742,26 @@ productGrid.addEventListener('change', event => {
   const checkbox = event.target.closest('[data-quick-select]');
   if (!checkbox) return;
   const productId = checkbox.dataset.quickSelect;
-  if (checkbox.checked) state.quickSelection.add(productId);
-  else state.quickSelection.delete(productId);
+  if (checkbox.checked) {
+    const product = state.products.find(item => item.id === productId || item.slug === productId);
+    const weight = getCardWeightValue(productId);
+    if (productHasWeights(product) && !weight) {
+      checkbox.checked = false;
+      checkbox.closest('.product-card')?.classList.remove('is-selected');
+      formFeedback.textContent = `Select a weight for ${product.brand} ${product.name} before adding it to your selection.`;
+      const select = productGrid.querySelector(`[data-weight-for="${CSS.escape(String(productId))}"]`);
+      if (select) {
+        select.focus();
+        select.classList.add('input-error');
+        setTimeout(() => select.classList.remove('input-error'), 1200);
+      }
+      updateQuickOrderButton();
+      return;
+    }
+    state.quickSelection.add(productId);
+  } else {
+    state.quickSelection.delete(productId);
+  }
   checkbox.closest('.product-card')?.classList.toggle('is-selected', checkbox.checked);
   updateQuickOrderButton();
 });

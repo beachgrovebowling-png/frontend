@@ -145,6 +145,27 @@ button { color: inherit; }
 .empty-state h3 { margin: 10px 0 4px; font: 600 28px var(--display); text-transform: uppercase; }
 .empty-state p { color: #77736e; font-size: 12px; }
 .text-button { padding: 8px; margin-top: 8px; background: none; border: 0; color: var(--orange-dark); font-size: 11px; font-weight: 700; cursor: pointer; }
+#quick-order-selected.is-floating {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 60;
+  margin: 0;
+  padding: 14px 20px;
+  background: var(--orange);
+  color: #161a1d;
+  border: 0;
+  box-shadow: 0 10px 30px rgba(23,23,23,.22);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+#quick-order-selected.is-floating:hover,
+#quick-order-selected.is-floating:focus-visible {
+  background: var(--orange-dark);
+  color: #fff;
+}
+#quick-order-selected.is-floating:disabled { display: none; }
 
 .shipping-section { background: #f4efe8; }
 .shipping-content { margin-top: 22px; max-width: 760px; padding: 28px 30px; background: rgba(255,255,255,0.5); border: 1px solid var(--line); color: #4c4b49; font-size: 16px; line-height: 1.8; }

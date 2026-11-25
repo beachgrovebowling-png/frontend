@@ -75,7 +75,10 @@
       </div>
       <div class="brand-results-heading" id="brand-results-heading">
         <h3 id="brand-results-title">All products</h3>
-        <button class="text-button" id="browse-brands" type="button">Browse brands ↑</button>
+        <div class="quick-order-actions">
+          <button class="text-button" id="quick-order-selected" type="button" disabled>Quick order selected (0)</button>
+          <button class="text-button" id="browse-brands" type="button">Browse brands ↑</button>
+        </div>
       </div>
       <p class="catalog-status" id="catalog-status" role="status" aria-live="polite">Loading catalogue...</p>
       <div class="notice" id="catalog-notice" hidden></div>
@@ -140,11 +143,13 @@
       </div>
       <form class="order-form" id="order-form" action="/api/orders" method="post">
         <div class="form-topline"><span>ORDER ENQUIRY</span><span>01 <i>/</i> 02</span></div>
+        <div id="cart-order-summary" class="cart-order-summary" hidden></div>
         <div class="form-grid">
           <label class="field"><span>Your name <b>*</b></span><input name="customerName" autocomplete="name" minlength="2" maxlength="100" required placeholder="Name"></label>
           <label class="field"><span>Phone number <b>*</b></span><input name="customerPhone" type="tel" autocomplete="tel" minlength="7" maxlength="24" required placeholder="Your number"></label>
           <label class="field field-full"><span>Email <small>Optional</small></span><input name="email" type="email" autocomplete="email" maxlength="254" placeholder="you@example.com"></label>
           <label class="field"><span>Product <b>*</b></span><select name="productId" id="product-select" required><option value="">Select equipment</option></select></label>
+          <label class="field" id="weight-field" hidden><span>Weight <b>*</b></span><select name="weight" id="weight-select"><option value="">Select weight</option></select></label>
           <label class="field"><span>Quantity <b>*</b></span><input name="quantity" type="number" min="1" max="50" step="1" value="1" required></label>
           <label class="field field-full"><span>Payment method <b>*</b></span><select name="paymentMethod" required><option value="">Choose a payment method</option><option value="Zelle">Zelle</option><option value="Chime">Chime</option><option value="Apple Pay">Apple Pay</option><option value="Cash App">Cash App</option></select></label>
           <label class="field field-full"><span>Anything else? <small>Optional</small></span><textarea name="requirements" rows="3" maxlength="500" placeholder="Fit, weight, preferences or questions"></textarea></label>
@@ -152,9 +157,9 @@
         <p class="form-feedback" id="form-feedback" role="status" aria-live="polite"></p>
         <div class="order-channel-actions" role="group" aria-label="Choose how to send your order">
           <button class="button button-orange" type="button" data-order-action="whatsapp">Send by WhatsApp <span aria-hidden="true">↗</span></button>
-          <button class="button button-orange" type="button" data-order-action="email">Send by Email <span aria-hidden="true">↗</span></button>
+          <button class="button button-orange" type="button" data-order-action="text">Send by Text <span aria-hidden="true">↗</span></button>
         </div>
-        <p class="form-footnote">Choose WhatsApp or email to send your enquiry. The shop will confirm availability and order details with you.</p>
+        <p class="form-footnote">Choose WhatsApp or text to send your enquiry. The shop will confirm availability and order details with you.</p>
         <p class="payment-note"><strong>Payment options:</strong> Zelle, Chime, Apple Pay, and Cash App. The shop will provide payment details after confirming your order.</p>
       </form>
     </section>
@@ -170,10 +175,10 @@
             <button type="button" class="button button-orange order-now-button" id="contact-order-button">Order Now <span aria-hidden="true">↗</span></button>
             <div class="order-menu" id="contact-order-menu" hidden>
               <button class="order-menu-option" type="button" data-order-action="whatsapp">Order on WhatsApp</button>
-              <button class="order-menu-option" type="button" data-order-action="email">Order by Email</button>
+              <button class="order-menu-option" type="button" data-order-action="text">Order by Text</button>
             </div>
           </div>
-          <a id="email-shop-button" href="mailto:beachgrovebowling@gmail.com" class="text-button">Email the shop</a>
+          <a id="text-shop-button" href="#contact" class="text-button">Text the shop</a>
         </div>
       </div>
     </section>
@@ -227,7 +232,7 @@
       <div class="cart-total"><span>Subtotal</span><strong id="cart-subtotal">$0.00</strong></div>
       <p class="cart-note">Any items without confirmed pricing require owner confirmation before a final total is set.</p>
       <button type="button" class="button button-orange cart-submit" id="cart-submit">Proceed to WhatsApp <span aria-hidden="true">↗</span></button>
-      <button type="button" class="button cart-email-submit" id="cart-email-submit">Order by Email <span aria-hidden="true">↗</span></button>
+      <button type="button" class="button cart-text-submit" id="cart-text-submit">Order by Text <span aria-hidden="true">↗</span></button>
       <p class="cart-feedback" id="cart-feedback" role="status" aria-live="polite"></p>
     </div>
   </aside>

@@ -1,4 +1,4 @@
-const state = { products: [], category: 'all', brand: '', brandSelected: true, query: '', whatsappConfigured: false, whatsappNumber: '', contactEmail: '', submittedOrder: null, cart: loadCart() };
+const state = { products: [], category: 'all', brand: '', brandSelected: true, query: '', whatsappConfigured: false, whatsappNumber: '', smsConfigured: false, smsNumber: '', contactEmail: '', submittedOrder: null, cart: loadCart(), quickSelection: new Set(), orderMode: 'single' };
 const API_BASE = String(window.__API_BASE__ || '').replace(/\/$/, '');
 const productGrid = document.querySelector('#product-grid');
 const catalogStatus = document.querySelector('#catalog-status');
@@ -17,10 +17,14 @@ const cartItems = document.querySelector('#cart-items');
 const cartToggle = document.querySelector('#cart-toggle');
 const cartClose = document.querySelector('#cart-close');
 const cartSubmit = document.querySelector('#cart-submit');
-const cartEmailSubmit = document.querySelector('#cart-email-submit');
+const cartTextSubmit = document.querySelector('#cart-text-submit');
 const cartFeedback = document.querySelector('#cart-feedback');
 const cartCount = document.querySelector('#cart-count');
 const cartSubtotal = document.querySelector('#cart-subtotal');
+const quickOrderSelected = document.querySelector('#quick-order-selected');
+const weightField = document.querySelector('#weight-field');
+const weightSelect = document.querySelector('#weight-select');
+const cartOrderSummary = document.querySelector('#cart-order-summary');
 const menuToggle = document.querySelector('#menu-toggle');
 const mainMenu = document.querySelector('#main-menu');
 const categoryMenuToggle = document.querySelector('#category-menu-toggle');
@@ -173,21 +177,28 @@ function renderProducts() {
   document.querySelector('#clear-filters').hidden = noPublishedProducts;
   products.forEach((product, index) => {
     const images = productImages(product);
+    const hasWeights = productHasWeights(product);
+    const selected = state.quickSelection.has(product.id);
     const card = document.createElement('article');
-    card.className = 'product-card';
+    card.className = `product-card${selected ? ' is-selected' : ''}`;
     card.style.animationDelay = `${Math.min(index * 60, 240)}ms`;
     card.innerHTML = `
       <div class="product-visual">
+        <label class="quick-select" aria-label="Select ${escapeHtml(product.name)} for quick order">
+          <input type="checkbox" data-quick-select="${escapeHtml(product.id)}" ${selected ? 'checked' : ''}>
+          <span>Quick order</span>
+        </label>
         ${images.length ? `<img class="product-image" src="${escapeHtml(images[0].url)}" alt="${escapeHtml(images[0].alt || product.imageAlt || `${product.brand} ${product.name}`)}" loading="lazy">` : productVisual(product)}
-        ${images.length > 1 ? `<button class="card-image-arrow previous" type="button" data-image-step="-1" aria-label="Previous ${escapeHtml(product.name)} photo">‹</button><button class="card-image-arrow next" type="button" data-image-step="1" aria-label="Next ${escapeHtml(product.name)} photo">›</button><span class="card-image-count" aria-live="polite">1 / ${images.length}</span>` : ''}
+        ${images.length > 1 ? `<button class="card-image-arrow previous" type="button" data-image-step="-1" aria-label="Previous ${escapeHtml(product.name)} photo">?</button><button class="card-image-arrow next" type="button" data-image-step="1" aria-label="Next ${escapeHtml(product.name)} photo">?</button><span class="card-image-count" aria-live="polite">1 / ${images.length}</span>` : ''}
         <span class="product-tag ${product.featured ? 'featured' : ''}">${product.featured ? 'Featured' : escapeHtml(categoryLabels[product.category] || 'Equipment')}</span>
       </div>
       <div class="product-info">
         <p class="product-brand">${escapeHtml(product.brand)}</p>
         <div class="product-title-row"><h3 class="product-title">${escapeHtml(product.name)}</h3><p class="product-price">${escapeHtml(priceLabel(product))}</p></div>
         <p class="product-description">${escapeHtml(product.description)}</p>
+        ${hasWeights ? `<label class="card-weight-field"><span>Weight</span><select data-weight-for="${escapeHtml(product.id)}"><option value="">Select weight</option>${[12,13,14,15,16].map(value => `<option value="${value}">${value} lbs</option>`).join('')}</select></label><p class="card-weight-note">Select a weight (12?16 lbs) before ordering.</p>` : ''}
         <div class="product-actions">
-          <button class="product-order" type="button" data-order="${escapeHtml(product.id)}">Buy now <span aria-hidden="true">↗</span></button>
+          <button class="product-order" type="button" data-order="${escapeHtml(product.id)}">Buy now <span aria-hidden="true">?</span></button>
           <button class="product-details" type="button" data-details="${escapeHtml(product.id)}">Details</button>
           <button class="product-cart" type="button" data-cart="${escapeHtml(product.id)}">Add to cart</button>
         </div>
@@ -244,6 +255,7 @@ function applyPublicSettings(siteData) {
   const homepage = siteData.homepage || {};
   const branding = siteData.branding || {};
   state.whatsappNumber = String(site.whatsappNumber || site.contactPhone || '').trim();
+  state.smsNumber = String(site.smsNumber || '').trim();
   state.contactEmail = String(site.contactEmail || '').trim();
   const title = document.querySelector('#hero-title');
   if (title && homepage.headline) {
@@ -275,12 +287,11 @@ function applyPublicSettings(siteData) {
   } else {
     currentHeroImage?.remove();
   }
-  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.contactEmail)) {
-    const emailShopButton = document.querySelector('#email-shop-button');
-    const mailto = `mailto:${state.contactEmail}`;
-    if (emailShopButton) {
-      emailShopButton.href = mailto;
-      emailShopButton.setAttribute('aria-label', `Email the shop at ${state.contactEmail}`);
+  if (state.smsNumber) {
+    const textShopButton = document.querySelector('#text-shop-button');
+    if (textShopButton) {
+      textShopButton.href = `sms:${state.smsNumber}?&body=${encodeURIComponent('Hi BowlersMechanic, I have a question about your bowling equipment.')}`;
+      textShopButton.setAttribute('aria-label', `Text the shop at ${state.smsNumber}`);
     }
   }
   if (siteData.seo?.title) document.title = siteData.seo.title;
@@ -366,6 +377,7 @@ async function loadProducts() {
     if (data.databaseConnected !== true || !Array.isArray(data.products)) throw new Error('Catalogue response is invalid or the database is disconnected.');
     state.products = data.products.filter(product => product && product.status !== 'draft' && product.isStarter !== true);
     state.whatsappConfigured = Boolean(data.whatsappConfigured);
+    state.smsConfigured = Boolean(data.smsConfigured);
     applyPublicSettings(data.site);
     applyCategoryFilters(data.categories || []);
     applyBrandFilters(data.brands || []);
@@ -420,19 +432,19 @@ function showProductDetails(product) {
     });
   }));
 
-  const weightChoices = Array.isArray(product.weights) && product.weights.length ? `
+  const weightChoices = productHasWeights(product) ? `
     <label class="dialog-field">
       <span>Weight</span>
       <select id="dialog-weight-select">
-        ${product.weights.map(weight => `<option value="${escapeHtml(weight.value)}" ${weight.available === false ? 'disabled' : ''}>${escapeHtml(weight.label)} ${weight.available === false ? '(unavailable)' : ''}</option>`).join('')}
+        <option value="">Select weight</option>
+        ${[12,13,14,15,16].map(value => `<option value="${value}">${value} lbs</option>`).join('')}
       </select>
     </label>
   ` : '';
 
   const dialogContent = document.querySelector('.dialog-copy');
   dialogContent.querySelector('.dialog-offer')?.remove();
-  const existingWeightSelector = dialogContent.querySelector('#dialog-weight-select');
-  if (existingWeightSelector) existingWeightSelector.remove();
+  dialogContent.querySelectorAll('.dialog-field').forEach(field => { if (field.querySelector('#dialog-weight-select')) field.remove(); });
   if (weightChoices) {
     dialogContent.insertAdjacentHTML('beforeend', weightChoices);
   }
@@ -441,26 +453,81 @@ function showProductDetails(product) {
   document.querySelector('#dialog-order').innerHTML = `Add to cart <span aria-hidden="true">↗</span>`;
   document.querySelector('#dialog-order').onclick = () => {
     const weightSelect = document.querySelector('#dialog-weight-select');
-    const selectedWeight = weightSelect ? weightSelect.value : null;
-    addToCart(product.id, selectedWeight ? Number(selectedWeight) : null, 1);
-    dialog.close();
+    const selectedWeight = weightSelect ? normalizeWeightValue(weightSelect.value) : '';
+    if (addToCart(product.id, selectedWeight || null, 1)) dialog.close();
   };
 
   dialog.showModal();
 }
 
-function addToCart(productId, weightValue = null, quantity = 1) {
+function productHasWeights(product) {
+  const category = String(product?.category || '').trim().toLowerCase();
+  const ballCategories = new Set(['bowling-ball', 'performance-bowling-balls', 'beginner-bowling-balls', 'spare-bowling-balls']);
+  if (ballCategories.has(category)) return true;
+  return Array.isArray(product?.weights) && product.weights.length > 0;
+}
+
+const ALLOWED_WEIGHT_LBS = [12, 13, 14, 15, 16];
+function normalizeWeightValue(value) {
+  const raw = String(value ?? '').trim().toLowerCase();
+  const match = raw.match(/(\d{1,2})/);
+  if (!match) return '';
+  const numeric = Number(match[1]);
+  return ALLOWED_WEIGHT_LBS.includes(numeric) ? String(numeric) : '';
+}
+
+function getCardWeightValue(productId) {
+  const select = productGrid.querySelector(`[data-weight-for="${CSS.escape(String(productId))}"]`);
+  return normalizeWeightValue(select?.value);
+}
+
+function updateQuickOrderButton() {
+  if (!quickOrderSelected) return;
+  const count = state.quickSelection.size;
+  quickOrderSelected.textContent = `Quick order selected (${count})`;
+  quickOrderSelected.disabled = count === 0;
+}
+
+function syncOrderWeightField(productId, preferredWeight = '') {
+  if (!weightField || !weightSelect) return;
   const product = state.products.find(item => item.id === productId || item.slug === productId);
-  if (!product) return;
-  const cartKey = `${product.id}-${weightValue ?? 'standard'}`;
-  const existing = state.cart.find(item => item.productId === product.id && String(item.weightValue ?? 'standard') === String(weightValue ?? 'standard'));
+  const required = productHasWeights(product);
+  const selected = normalizeWeightValue(preferredWeight);
+  weightSelect.innerHTML = '<option value="">Select weight</option>' + ALLOWED_WEIGHT_LBS.map(value => {
+    const label = `${value} lbs`;
+    return `<option value="${value}" ${selected === String(value) ? 'selected' : ''}>${label}</option>`;
+  }).join('');
+  weightField.hidden = !required;
+  weightSelect.required = required;
+  if (!required) weightSelect.value = '';
+}
+
+function addToCart(productId, weightValue = null, quantity = 1, options = {}) {
+  const product = state.products.find(item => item.id === productId || item.slug === productId);
+  if (!product) return false;
+  const normalizedWeight = normalizeWeightValue(weightValue);
+  if (productHasWeights(product) && !normalizedWeight) {
+    if (!options.quiet) {
+      formFeedback.textContent = `Select a weight for ${product.brand} ${product.name} before adding it to your order.`;
+      const select = productGrid.querySelector(`[data-weight-for="${CSS.escape(String(product.id))}"]`);
+      if (select) {
+        select.focus();
+        select.classList.add('input-error');
+        setTimeout(() => select.classList.remove('input-error'), 1200);
+      }
+    }
+    return false;
+  }
+  const cartKey = `${product.id}-${normalizedWeight || 'standard'}`;
+  const existing = state.cart.find(item => item.productId === product.id && String(item.weightValue ?? 'standard') === String(normalizedWeight || 'standard'));
   if (existing) {
-    existing.quantity += quantity;
+    existing.quantity = Math.min(50, existing.quantity + quantity);
   } else {
-    state.cart.push({ productId: product.id, slug: product.slug, name: product.name, brand: product.brand, price: product.price, weightValue, quantity, cartKey });
+    state.cart.push({ productId: product.id, slug: product.slug, name: product.name, brand: product.brand, price: product.price, weightValue: normalizedWeight || null, quantity, cartKey });
   }
   saveCart();
-  if (cartDrawer) cartDrawer.classList.add('is-open');
+  if (options.openCart !== false && cartDrawer) cartDrawer.classList.add('is-open');
+  return true;
 }
 
 function removeCartItem(productId, weightValue = null) {
@@ -490,7 +557,7 @@ function renderCart() {
       <div>
         <strong>${escapeHtml(product.brand || item.brand || 'Product')}</strong>
         <div>${escapeHtml(product.name || item.name || 'Item')}</div>
-        <div class="cart-meta">${item.weightValue ? `Weight: ${escapeHtml(item.weightValue)} lb` : escapeHtml(priceLabel(product))}</div>
+        <div class="cart-meta">${item.weightValue ? `Weight: ${escapeHtml(String(item.weightValue))} lbs` : escapeHtml(priceLabel(product))}</div>
       </div>
       <div class="cart-controls">
         <div class="qty-selector">
@@ -653,12 +720,15 @@ productGrid.addEventListener('click', event => {
   const detailsButton = event.target.closest('[data-details]');
   const cartButton = event.target.closest('[data-cart]');
   if (cartButton) {
-    addToCart(cartButton.dataset.cart, null, 1);
-    openCart();
+    const productId = cartButton.dataset.cart;
+    addToCart(productId, getCardWeightValue(productId), 1);
     return;
   }
   if (orderButton) {
-    productSelect.value = orderButton.dataset.order;
+    const productId = orderButton.dataset.order;
+    setOrderMode('single');
+    productSelect.value = productId;
+    syncOrderWeightField(productId, getCardWeightValue(productId));
     document.querySelector('#order').scrollIntoView({ behavior: 'smooth' });
     productSelect.focus({ preventScroll: true });
   } else if (detailsButton) {
@@ -666,6 +736,49 @@ productGrid.addEventListener('click', event => {
     if (product) showProductDetails(product);
   }
 });
+
+productGrid.addEventListener('change', event => {
+  const checkbox = event.target.closest('[data-quick-select]');
+  if (!checkbox) return;
+  const productId = checkbox.dataset.quickSelect;
+  if (checkbox.checked) state.quickSelection.add(productId);
+  else state.quickSelection.delete(productId);
+  checkbox.closest('.product-card')?.classList.toggle('is-selected', checkbox.checked);
+  updateQuickOrderButton();
+});
+
+if (quickOrderSelected) {
+  quickOrderSelected.addEventListener('click', () => {
+    const ids = [...state.quickSelection];
+    if (!ids.length) return;
+    const missingWeight = [];
+    let added = 0;
+    ids.forEach(productId => {
+      const product = state.products.find(item => item.id === productId || item.slug === productId);
+      if (!product) return;
+      const weight = getCardWeightValue(productId);
+      if (productHasWeights(product) && !weight) {
+        missingWeight.push(`${product.brand} ${product.name}`);
+        return;
+      }
+      if (addToCart(productId, weight || null, 1, { openCart: false, quiet: true })) added += 1;
+    });
+    updateQuickOrderButton();
+    if (missingWeight.length) {
+      formFeedback.textContent = `Select a weight before quick ordering: ${missingWeight.join(', ')}.`;
+      document.querySelector('#catalogue').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (added > 0) {
+      formFeedback.textContent = `${added} item${added === 1 ? '' : 's'} added for quick order. Review your cart and proceed when ready.`;
+    }
+    if (added > 0) openCart();
+  });
+}
+
+if (productSelect) {
+  productSelect.addEventListener('change', () => {
+    syncOrderWeightField(productSelect.value);
+  });
+}
 
 document.querySelector('#dialog-order').addEventListener('click', () => dialog.close());
 document.querySelector('.dialog-close').addEventListener('click', () => dialog.close());
@@ -701,37 +814,74 @@ async function handleDirectOrderAction(type, contactOnly = false) {
     if (type === 'whatsapp') {
       if (!state.whatsappNumber) return;
       window.open(`https://wa.me/${state.whatsappNumber}?text=${encodeURIComponent('Hi BowlersMechanic, I have a question about your bowling equipment.')}`, '_blank', 'noopener');
-    } else if (state.contactEmail) {
-      window.location.href = `mailto:${state.contactEmail}?subject=${encodeURIComponent('BowlersMechanic enquiry')}`;
+    } else if (type === 'text' && state.smsNumber) {
+      window.location.href = `sms:${state.smsNumber}?&body=${encodeURIComponent('Hi BowlersMechanic, I have a question about your bowling equipment.')}`;
     }
     return;
   }
   if (type === 'whatsapp' && !state.whatsappNumber) {
-    formFeedback.textContent = 'WhatsApp ordering is not available right now. Please choose email instead.';
+    formFeedback.textContent = 'WhatsApp ordering is not available right now. Please choose text instead.';
     return;
   }
-  if (type === 'email' && !state.contactEmail) {
-    formFeedback.textContent = 'The shop email is not available right now. Please choose WhatsApp instead.';
+  if (type === 'text' && !state.smsNumber) {
+    formFeedback.textContent = 'Text ordering is not available right now. Please choose WhatsApp instead.';
     return;
   }
-  if (!state.submittedOrder && !orderForm.reportValidity()) return;
+
+  const cartMode = state.orderMode === 'cart';
+  if (cartMode && !state.cart.length) {
+    formFeedback.textContent = 'Your cart is empty. Add items before placing a quick order.';
+    return;
+  }
+  if (!cartMode && !state.submittedOrder) {
+    if (!orderForm.reportValidity()) return;
+    const selectedProduct = state.products.find(item => item.id === productSelect.value || item.slug === productSelect.value);
+    if (selectedProduct && productHasWeights(selectedProduct) && !normalizeWeightValue(weightSelect?.value)) {
+      formFeedback.textContent = `Select a weight for ${selectedProduct.brand} ${selectedProduct.name} before placing your order.`;
+      weightSelect?.focus();
+      return;
+    }
+  }
+  if (cartMode && !state.submittedOrder) {
+    if (!orderForm.reportValidity()) return;
+    const missingWeight = state.cart.filter(item => {
+      const product = state.products.find(entry => entry.id === item.productId || item.slug === item.productId);
+      return productHasWeights(product) && !normalizeWeightValue(item.weightValue);
+    });
+    if (missingWeight.length) {
+      formFeedback.textContent = 'Select a weight for each weighted cart item before placing your quick order.';
+      return;
+    }
+  }
+
   let whatsappWindow = null;
   if (!state.submittedOrder) {
-    const quantity = Number(orderForm.elements.quantity.value);
-    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 50) {
+    const formData = new FormData(orderForm);
+    const customerName = String(formData.get('customerName') || '').trim();
+    const customerPhone = String(formData.get('customerPhone') || '').trim();
+    const email = String(formData.get('email') || '').trim();
+    const paymentMethod = String(formData.get('paymentMethod') || '').trim();
+    const requirements = String(formData.get('requirements') || '').trim();
+    const quantity = Number(formData.get('quantity'));
+
+    if (!cartMode && (!Number.isInteger(quantity) || quantity < 1 || quantity > 50)) {
       formFeedback.textContent = 'Choose a quantity from 1 to 50.';
       return;
     }
-    formFeedback.textContent = 'Recording your enquiry…';
-    const formData = new FormData(orderForm);
+
+    const items = cartMode
+      ? state.cart.map(item => ({ productId: item.productId, quantity: item.quantity, weight: normalizeWeightValue(item.weightValue) }))
+      : [{ productId: String(formData.get('productId') || ''), quantity, weight: normalizeWeightValue(formData.get('weight') || '') }];
+
+    formFeedback.textContent = 'Recording your enquiry?';
     whatsappWindow = type === 'whatsapp' ? window.open('about:blank', '_blank') : null;
     if (whatsappWindow) whatsappWindow.opener = null;
     let data;
     try {
       const response = await fetch(apiUrl('/api/orders'), {
         method: 'POST',
-        headers: { Accept: 'application/json' },
-        body: new URLSearchParams(formData)
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerName, customerPhone, email, paymentMethod, requirements, items, productId: items[0]?.productId, quantity: items[0]?.quantity, weight: items[0]?.weight || '' })
       });
       data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || 'Your order could not be submitted right now.');
@@ -741,27 +891,40 @@ async function handleDirectOrderAction(type, contactOnly = false) {
     }
     state.whatsappConfigured = Boolean(data.whatsappNumber);
     if (data.whatsappNumber) state.whatsappNumber = String(data.whatsappNumber).trim();
+    state.smsConfigured = Boolean(data.smsNumber);
+    if (data.smsNumber) state.smsNumber = String(data.smsNumber).trim();
     if (data.contactEmail) state.contactEmail = String(data.contactEmail).trim();
-    const selectedProduct = state.products.find(item => item.id === formData.get('productId') || item.slug === formData.get('productId'));
+
     state.submittedOrder = {
       reference: String(data.order?.reference || data.reference || 'Pending'),
-      customerName: String(formData.get('customerName') || '').trim(),
-      customerPhone: String(formData.get('customerPhone') || '').trim(),
-      email: String(formData.get('email') || '').trim(),
-      productId: selectedProduct?.id || String(formData.get('productId') || ''),
-      quantity: String(formData.get('quantity') || '1'),
-      paymentMethod: String(formData.get('paymentMethod') || ''),
-      requirements: String(formData.get('requirements') || '').trim()
+      customerName,
+      customerPhone,
+      email,
+      paymentMethod,
+      requirements,
+      items: (Array.isArray(data.items) && data.items.length ? data.items : items).map(item => {
+        const product = state.products.find(entry => entry.id === item.productId || entry.slug === item.productId) || {};
+        return {
+          productId: item.productId,
+          name: item.name || product.name || 'Item',
+          brand: item.brand || product.brand || 'Product',
+          quantity: Number(item.quantity) || 1,
+          weight: normalizeWeightValue(item.weight),
+          price: Number.isFinite(item.price) ? item.price : cartItemPrice(product)
+        };
+      })
     };
+    if (cartMode) { state.cart = []; saveCart(); }
     orderForm.querySelectorAll('input, select, textarea').forEach(field => { field.disabled = true; });
   }
+
   const order = state.submittedOrder;
-  const product = state.products.find(item => item.id === order.productId || item.slug === order.productId);
-  if (!product) {
-    formFeedback.textContent = 'The selected product is no longer available. Refresh the catalogue and try again.';
+  const orderItems = Array.isArray(order.items) ? order.items : [];
+  if (!orderItems.length) {
+    formFeedback.textContent = 'No order items were found. Please try again.';
+    whatsappWindow?.close();
     return;
   }
-  const price = priceLabel(product);
   const lines = [
     'BowlersMechanic order enquiry',
     '',
@@ -769,12 +932,18 @@ async function handleDirectOrderAction(type, contactOnly = false) {
     `Customer: ${order.customerName}`,
     `Phone: ${order.customerPhone}`,
     ...(order.email ? [`Email: ${order.email}`] : []),
-    `Product: ${product.brand} ${product.name}`,
-    `Price: ${price}`,
-    `Quantity: ${order.quantity}`,
+    '',
+    'Items:',
+    ...orderItems.map(item => {
+      const weight = item.weight ? ` | Weight: ${item.weight}${/lb/i.test(item.weight) ? '' : ' lb'}` : '';
+      const price = Number.isFinite(item.price) ? `$${item.price.toFixed(2)} USD` : 'Contact for price';
+      return `- ${item.brand} ${item.name}${weight} | Qty: ${item.quantity} | ${price}`;
+    }),
+    '',
     `Preferred payment method: ${order.paymentMethod}`,
     ...(order.requirements ? [`Additional requirements: ${order.requirements}`] : []),
-    ''
+    '',
+    'Unconfirmed prices and shipping costs must be confirmed by the owner before the order is finalised.'
   ];
   const message = lines.join('\n');
 
@@ -790,10 +959,9 @@ async function handleDirectOrderAction(type, contactOnly = false) {
     formFeedback.textContent = 'Your order details are ready in WhatsApp. Review the message and send it to the shop.';
     return;
   }
-  const subject = encodeURIComponent(`Order enquiry ${order.reference}`);
-  const body = encodeURIComponent(message);
-  window.location.href = `mailto:${state.contactEmail}?subject=${subject}&body=${body}`;
-  formFeedback.textContent = 'Your order details are ready in an email draft to the shop.';
+  const smsUrl = `sms:${state.smsNumber}?&body=${encodeURIComponent(message)}`;
+  window.location.href = smsUrl;
+  formFeedback.textContent = 'Your order details are ready in a text message to the shop.';
 }
 
 orderNowButtons.forEach(button => {
@@ -837,27 +1005,66 @@ cartItems.addEventListener('click', event => {
   }
 });
 
+function renderCartOrderSummary() {
+  if (!cartOrderSummary) return;
+  const items = state.cart.map(item => {
+    const product = state.products.find(entry => entry.id === item.productId || entry.slug === item.productId) || item;
+    const weight = item.weightValue ? ` · Weight: ${escapeHtml(String(item.weightValue))}${/lb/i.test(String(item.weightValue)) ? '' : ' lb'}` : '';
+    return `<li><strong>${escapeHtml(product.brand || item.brand || 'Product')}</strong> ${escapeHtml(product.name || item.name || 'Item')}${weight} × ${item.quantity}</li>`;
+  }).join('');
+  cartOrderSummary.innerHTML = `<p class="cart-order-summary-title">Quick order items (${state.cart.reduce((sum, item) => sum + item.quantity, 0)})</p><ul class="cart-order-summary-list">${items}</ul><p class="cart-order-summary-note">All cart items will be submitted in this quick order.</p>`;
+}
+
+function setOrderMode(mode) {
+  state.orderMode = mode === 'cart' ? 'cart' : 'single';
+  const cartMode = state.orderMode === 'cart';
+  if (cartOrderSummary) {
+    cartOrderSummary.hidden = !cartMode;
+    if (cartMode) renderCartOrderSummary();
+  }
+  const singleFields = [productSelect?.closest('.field'), weightField, orderForm?.elements.quantity?.closest('.field')].filter(Boolean);
+  singleFields.forEach(field => { field.hidden = cartMode; });
+  if (productSelect) { productSelect.required = !cartMode; if (!state.submittedOrder) productSelect.disabled = cartMode; }
+  if (orderForm?.elements.quantity) { orderForm.elements.quantity.required = !cartMode; if (!state.submittedOrder) orderForm.elements.quantity.disabled = cartMode; }
+  if (weightSelect) { const req = !cartMode && !weightField.hidden; weightSelect.required = req; if (!state.submittedOrder) weightSelect.disabled = cartMode; }
+  if (!cartMode) syncOrderWeightField(productSelect?.value || '');
+}
+
 cartSubmit.addEventListener('click', () => {
   if (!state.cart.length) {
     formFeedback.textContent = 'Your cart is empty. Add an item before continuing to WhatsApp.';
     closeCart();
     return;
   }
-  const firstItem = state.cart[0];
-  productSelect.value = firstItem.productId;
-  orderForm.elements.quantity.value = firstItem.quantity;
+  const missingWeight = state.cart.filter(item => {
+    const product = state.products.find(entry => entry.id === item.productId || entry.slug === item.productId);
+    return productHasWeights(product) && !normalizeWeightValue(item.weightValue);
+  });
+  if (missingWeight.length) {
+    cartFeedback.textContent = 'Select a weight for each weighted item in your cart before proceeding to order.';
+    return;
+  }
+  setOrderMode('cart');
   document.querySelector('#order').scrollIntoView({ behavior: 'smooth' });
-  formFeedback.textContent = 'Cart items are ready for enquiry. Review details and continue to WhatsApp.';
+  formFeedback.textContent = 'Review your details and send this quick order for all cart items.';
   closeCart();
 });
 
-cartEmailSubmit.addEventListener('click', () => {
+cartTextSubmit.addEventListener('click', () => {
   if (!state.cart.length) {
-    cartFeedback.textContent = 'Your cart is empty. Add an item before ordering by email.';
+    cartFeedback.textContent = 'Your cart is empty. Add an item before ordering by text.';
     return;
   }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.contactEmail)) {
-    cartFeedback.textContent = 'The shop email is not configured yet. Please contact the shop another way.';
+  const missingWeight = state.cart.filter(item => {
+    const product = state.products.find(entry => entry.id === item.productId || entry.slug === item.productId);
+    return productHasWeights(product) && !normalizeWeightValue(item.weightValue);
+  });
+  if (missingWeight.length) {
+    cartFeedback.textContent = 'Select a weight for each weighted item in your cart before ordering.';
+    return;
+  }
+  if (!state.smsNumber) {
+    cartFeedback.textContent = 'The shop text number is not configured yet. Please contact the shop another way.';
     return;
   }
 
@@ -881,10 +1088,9 @@ cartEmailSubmit.addEventListener('click', () => {
     `Estimated subtotal: $${total.toFixed(2)} USD`,
     'Please confirm availability, final pricing, and shipping.'
   ];
-  const subject = encodeURIComponent('BowlersMechanic cart order enquiry');
   const body = encodeURIComponent(lines.join('\n'));
-  window.location.href = `mailto:${state.contactEmail}?subject=${subject}&body=${body}`;
-  cartFeedback.textContent = 'Your cart order is ready in an email draft to the shop.';
+  window.location.href = `sms:${state.smsNumber}?&body=${body}`;
+  cartFeedback.textContent = 'Your cart order is ready in a text message to the shop.';
 });
 
 trackVisitor();

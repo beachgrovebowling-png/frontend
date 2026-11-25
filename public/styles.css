@@ -193,9 +193,9 @@ button { color: inherit; }
 .cart-footer { border-top: 1px solid var(--line); border-bottom: 0; }
 .cart-total { display: flex; justify-content: space-between; align-items: center; font-size: 12px; text-transform: uppercase; }
 .cart-note { margin: 14px 0 18px; color: #5d6872; font-size: 10px; line-height: 1.6; }
-.cart-submit, .cart-email-submit { width: 100%; }
-.cart-email-submit { margin-top: 9px; border: 1px solid var(--primary-deep); background: transparent; color: var(--ink); }
-.cart-email-submit:hover { background: var(--surface-alt); }
+.cart-submit, .cart-text-submit { width: 100%; }
+.cart-text-submit { margin-top: 9px; border: 1px solid var(--primary-deep); background: transparent; color: var(--ink); }
+.cart-text-submit:hover { background: var(--surface-alt); }
 .cart-feedback { min-height: 0; margin: 8px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
 .dialog-copy { display: flex; flex-direction: column; gap: 10px; }
 .dialog-field { display: flex; flex-direction: column; gap: 8px; font-size: 11px; color: #4d5865; }

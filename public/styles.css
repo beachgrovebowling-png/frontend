@@ -152,8 +152,8 @@ button { color: inherit; }
   z-index: 60;
   margin: 0;
   padding: 14px 20px;
-  background: var(--orange);
-  color: #161a1d;
+  background: var(--primary);
+  color: var(--ink);
   border: 0;
   box-shadow: 0 10px 30px rgba(23,23,23,.22);
   font-size: 12px;
@@ -162,7 +162,7 @@ button { color: inherit; }
 }
 #quick-order-selected.is-floating:hover,
 #quick-order-selected.is-floating:focus-visible {
-  background: var(--orange-dark);
+  background: var(--primary-deep);
   color: #fff;
 }
 #quick-order-selected.is-floating:disabled { display: none; }

@@ -486,6 +486,7 @@ function updateQuickOrderButton() {
   const count = state.quickSelection.size;
   quickOrderSelected.textContent = `Buy selected (${count})`;
   quickOrderSelected.disabled = count === 0;
+  quickOrderSelected.hidden = count === 0;
   quickOrderSelected.classList.toggle('is-floating', count > 0);
 }
 
@@ -800,6 +801,8 @@ if (quickOrderSelected) {
     orderForm.querySelectorAll('input, select, textarea').forEach(field => { field.disabled = false; });
     setOrderMode('selected');
     formFeedback.textContent = `${selectedItems.length} item${selectedItems.length === 1 ? '' : 's'} selected. Complete your details and send your order.`;
+    quickOrderSelected.hidden = true;
+    quickOrderSelected.classList.remove('is-floating');
     document.querySelector('#order').scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 }

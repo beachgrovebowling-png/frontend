@@ -946,6 +946,7 @@ async function handleDirectOrderAction(type, contactOnly = false) {
     const customerName = String(formData.get('customerName') || '').trim();
     const customerPhone = String(formData.get('customerPhone') || '').trim();
     const email = String(formData.get('email') || '').trim();
+    const shippingAddress = String(formData.get('shippingAddress') || '').trim();
     const paymentMethod = String(formData.get('paymentMethod') || '').trim();
     const requirements = String(formData.get('requirements') || '').trim();
     const quantity = Number(formData.get('quantity'));
@@ -967,7 +968,7 @@ async function handleDirectOrderAction(type, contactOnly = false) {
       const response = await fetch(apiUrl('/api/orders'), {
         method: 'POST',
         headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customerName, customerPhone, email, paymentMethod, requirements, items, productId: items[0]?.productId, quantity: items[0]?.quantity, weight: items[0]?.weight || '' })
+        body: JSON.stringify({ customerName, customerPhone, email, shippingAddress, paymentMethod, requirements, items, productId: items[0]?.productId, quantity: items[0]?.quantity, weight: items[0]?.weight || '' })
       });
       data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || 'Your order could not be submitted right now.');
@@ -986,6 +987,7 @@ async function handleDirectOrderAction(type, contactOnly = false) {
       customerName,
       customerPhone,
       email,
+      shippingAddress,
       paymentMethod,
       requirements,
       items: (Array.isArray(data.items) && data.items.length ? data.items : items).map(item => {
@@ -1023,6 +1025,7 @@ async function handleDirectOrderAction(type, contactOnly = false) {
     `Customer: ${order.customerName}`,
     `Phone: ${order.customerPhone}`,
     ...(order.email ? [`Email: ${order.email}`] : []),
+    `Shipping address: ${order.shippingAddress}`,
     '',
     'Items:',
     ...orderItems.map(item => {

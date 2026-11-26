@@ -37,6 +37,8 @@ const brandDirectoryEmpty = document.querySelector('#brand-directory-empty');
 const brandResultsHeading = document.querySelector('#brand-results-heading');
 const brandResultsTitle = document.querySelector('#brand-results-title');
 const catalogControls = document.querySelector('.catalog-controls');
+const reviewsSection = document.querySelector('#reviews-section');
+const reviewsGrid = document.querySelector('#reviews-grid');
 
 const categoryLabels = {
   all: 'All equipment',
@@ -230,6 +232,7 @@ function renderProducts() {
     }
     productGrid.append(card);
   });
+  catalogStatus.classList.remove('is-error');
   catalogStatus.textContent = noPublishedProducts
     ? 'No published products are available right now.'
     : `${products.length} ${products.length === 1 ? 'item' : 'items'} shown`;
@@ -242,6 +245,38 @@ function createMissingImageLabel() {
   label.setAttribute('aria-label', 'Product image unavailable');
   label.textContent = 'Image unavailable';
   return label;
+}
+
+function renderReviews(reviews) {
+  if (!reviewsSection || !reviewsGrid) return;
+  const validReviews = reviews.filter(review => review
+    && Number.isInteger(review.rating) && review.rating >= 1 && review.rating <= 5
+    && String(review.text || '').trim());
+  reviewsGrid.innerHTML = validReviews.map(review => {
+    const date = review.updatedAt ? new Date(review.updatedAt) : null;
+    const dateLabel = date && !Number.isNaN(date.getTime())
+      ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date)
+      : '';
+    const dateMarkup = dateLabel ? `<time datetime="${date.toISOString()}">${escapeHtml(dateLabel)}</time>` : '';
+    return `<article class="review-card"><p class="review-stars" role="img" aria-label="${review.rating} out of 5 stars">${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}</p><blockquote>${escapeHtml(review.text)}</blockquote><p class="review-product">${escapeHtml(`${review.brand || ''} ${review.productName || ''}`.trim())}</p>${dateMarkup}</article>`;
+  }).join('');
+  reviewsSection.hidden = validReviews.length === 0;
+}
+
+async function loadReviews() {
+  try {
+    const response = await fetch(apiUrl('/api/reviews'), {
+      cache: 'no-store',
+      headers: { Accept: 'application/json' },
+      credentials: API_BASE ? 'include' : 'same-origin'
+    });
+    if (!response.ok) throw new Error(`Review request failed with status ${response.status}.`);
+    const data = await response.json();
+    if (!Array.isArray(data.reviews)) throw new Error('Review response is invalid.');
+    renderReviews(data.reviews);
+  } catch (error) {
+    console.warn('Could not load public reviews:', error.message);
+  }
 }
 
 function populateProductSelect() {
@@ -740,6 +775,26 @@ productGrid.addEventListener('click', event => {
 });
 
 productGrid.addEventListener('change', event => {
+  const weightSelect = event.target.closest('[data-weight-for]');
+  if (weightSelect) {
+    if (catalogStatus.classList.contains('is-error')) {
+      const missingWeight = [...state.quickSelection].reduce((missing, productId) => {
+        const product = state.products.find(item => item.id === productId || item.slug === productId);
+        if (product && productHasWeights(product) && !getCardWeightValue(product.id)) {
+          missing.push(`${product.brand} ${product.name}`);
+        }
+        return missing;
+      }, []);
+      if (missingWeight.length) {
+        catalogStatus.textContent = `Select a weight for ${missingWeight.join(', ')} before buying.`;
+      } else {
+        catalogStatus.classList.remove('is-error');
+        const count = visibleProducts().length;
+        catalogStatus.textContent = `${count} ${count === 1 ? 'item' : 'items'} shown`;
+      }
+    }
+    return;
+  }
   const checkbox = event.target.closest('[data-quick-select]');
   if (!checkbox) return;
   const productId = checkbox.dataset.quickSelect;
@@ -757,6 +812,7 @@ if (quickOrderSelected) {
     const ids = [...state.quickSelection];
     if (!ids.length) return;
     const missingWeight = [];
+    let firstMissingWeightSelect = null;
     const selectedItems = [];
     ids.forEach(productId => {
       const product = state.products.find(item => item.id === productId || item.slug === productId);
@@ -764,6 +820,9 @@ if (quickOrderSelected) {
       const weight = getCardWeightValue(productId);
       if (productHasWeights(product) && !weight) {
         missingWeight.push(`${product.brand} ${product.name}`);
+        if (!firstMissingWeightSelect) {
+          firstMissingWeightSelect = productGrid.querySelector(`[data-weight-for="${CSS.escape(String(product.id))}"]`);
+        }
         return;
       }
       selectedItems.push({
@@ -777,8 +836,10 @@ if (quickOrderSelected) {
       });
     });
     if (missingWeight.length) {
-      formFeedback.textContent = `Select a weight before buying: ${missingWeight.join(', ')}.`;
-      document.querySelector('#catalogue').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      catalogStatus.textContent = `Select a weight for ${missingWeight.join(', ')} before buying.`;
+      catalogStatus.classList.add('is-error');
+      firstMissingWeightSelect?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      firstMissingWeightSelect?.focus({ preventScroll: true });
       return;
     }
     state.selectedItems = selectedItems;
@@ -1128,4 +1189,5 @@ cartTextSubmit.addEventListener('click', () => {
 
 trackVisitor();
 loadProducts();
+loadReviews();
 renderCart();

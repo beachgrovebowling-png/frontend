@@ -77,6 +77,16 @@ button { color: inherit; }
 .section-heading h2 { font-size: clamp(52px, 6vw, 72px); line-height: .9; }
 .section-heading h2 em, .order-intro h2 em { color: var(--orange); font-style: normal; }
 .section-aside { margin: 0 0 3px; color: #6c6863; font-size: 12px; line-height: 1.7; }
+.reviews-section { overflow: hidden; background: #f4efe8; }
+.reviews-section[hidden] { display: none; }
+.reviews-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 16px; margin-top: 30px; overflow: hidden; }
+.review-card { min-width: 0; padding: 23px; background: #fff; border: 1px solid var(--line); animation: review-enter 20s linear both; }
+.review-stars { margin: 0 0 14px; color: var(--primary-deep); font-size: 18px; letter-spacing: 3px; }
+.review-card blockquote { margin: 0; color: #4c4b49; font-size: 14px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
+.review-product { margin: 18px 0 0; color: #77736e; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.review-card time { display: block; margin-top: 8px; color: #77736e; font-size: 10px; }
+@keyframes review-enter { from { transform: translateX(-100vw); } to { transform: translateX(0); } }
+@media (prefers-reduced-motion: reduce) { .review-card { animation: none; } }
 .catalog-controls[hidden], .brand-directory[hidden], .brand-results-heading[hidden], .catalog-status[hidden], .product-grid[hidden] { display: none; }
 .brand-directory { margin-top: 30px; }
 .brand-directory h3, .brand-results-heading h3 { margin: 0 0 16px; font: 700 28px/.95 var(--display); text-transform: uppercase; }
@@ -101,6 +111,7 @@ button { color: inherit; }
 .search-box input { width: 100%; border: 0; outline: 0; background: transparent; color: var(--ink); font-size: 11px; }
 .search-box input::placeholder { color: #77736e; }
 .catalog-status { color: #77736e; font-size: 11px; min-height: 15px; margin: 15px 0 11px; }
+.catalog-status.is-error { color: #9d3d22; font-weight: 700; }
 .notice { padding: 11px 14px; margin: 8px 0 18px; color: #443d49; background: #ece5f0; border-left: 3px solid var(--purple); font-size: 11px; line-height: 1.6; }
 .notice[hidden] { display: none; }
 .product-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; }

@@ -339,12 +339,21 @@ async function editOrder(id) {
   const order = data.order;
   if (!order) return notify('Order request not found.', 'error');
   const form = document.querySelector('#order-edit-form');
+  const privateDetails = document.querySelector('#order-private-details');
+  const reviewSection = document.createElement('div');
+  reviewSection.className = 'form-section';
+  reviewSection.innerHTML = `<h3>Public review</h3><p class="table-sub">Only publish feedback provided by the customer. Saving a review makes it visible on the storefront immediately. Leave the text empty to leave any existing review unchanged.</p><div class="admin-form-grid"><label class="setting-field">Rating<select name="reviewRating" class="admin-select">${[5,4,3,2,1].map(rating => `<option value="${rating}">${rating} star${rating === 1 ? '' : 's'}</option>`).join('')}</select></label><label class="setting-field full">Review text<textarea class="admin-textarea" name="reviewText" maxlength="1200" placeholder="Enter customer feedback to publish with this order."></textarea></label></div>`;
+  privateDetails.before(reviewSection);
   form.elements.id.value = order._id;
   form.elements.status.value = order.status;
   form.elements.confirmedPrice.value = order.confirmedPrice ?? '';
   form.elements.adminNotes.value = order.adminNotes || '';
   form.elements.shippingInfo.value = order.shippingInfo || '';
   form.elements.cancelReason.value = order.cancelReason || '';
+  form.elements.reviewRating.value = String(order.review?.rating || 5);
+  form.elements.reviewText.value = order.review?.text || '';
+  form.dataset.reviewRating = form.elements.reviewRating.value;
+  form.dataset.reviewText = form.elements.reviewText.value;
   document.querySelector('#order-dialog-title').textContent = order.reference;
   document.querySelector('#order-private-details').innerHTML = `<p><b>${escapeHtml(order.customer.name)}</b> · ${escapeHtml(order.customer.phone)} ${order.customer.email ? `· ${escapeHtml(order.customer.email)}` : ''}</p><p>${escapeHtml(order.product.brand)} ${escapeHtml(order.product.name)} × ${Number(order.product.quantity)} · ${Number.isFinite(order.product.unitPrice) ? `$${order.product.unitPrice.toFixed(2)} USD` : 'Contact for price'}</p><p class="table-sub">Submitted ${escapeHtml(fmtDate(order.createdAt))}. This records the website request only, not WhatsApp delivery.</p><h3>History</h3>${(order.history || []).map(item => `<div class="account-row">${statusPill(item.status)}<span class="table-sub">${escapeHtml(fmtDate(item.changedAt))} ${escapeHtml(item.note || '')}</span></div>`).join('')}`;
   document.querySelector('#order-dialog').showModal();
@@ -450,7 +459,13 @@ async function handleSubmit(event) {
     } catch (error) { notify(error.message, 'error'); }
   } else if (form.id === 'order-edit-form') {
     event.preventDefault(); const data = new FormData(form); const body = Object.fromEntries(data.entries()); delete body.id;
-    try { await api(`/api/admin/orders/${data.get('id')}`, { method: 'PUT', body }); document.querySelector('#order-dialog').close(); notify('Order request updated.'); loadView('orders'); } catch (error) { notify(error.message, 'error'); }
+    const reviewText = String(body.reviewText || '').trim();
+    const reviewRating = String(body.reviewRating || '5');
+    const reviewChanged = reviewText !== form.dataset.reviewText || reviewRating !== form.dataset.reviewRating;
+    delete body.reviewText;
+    delete body.reviewRating;
+    if (reviewText && reviewChanged) { body.reviewText = reviewText; body.reviewRating = reviewRating; }
+    try { await api(`/api/admin/orders/${data.get('id')}`, { method: 'PUT', body }); document.querySelector('#order-dialog').close(); notify(reviewText && reviewChanged ? 'Order updated and review published.' : 'Order request updated.'); loadView('orders'); } catch (error) { notify(error.message, 'error'); }
   } else if (form.id === 'password-form') {
     event.preventDefault(); const data = new FormData(form); if (data.get('newPassword') !== data.get('confirmPassword')) return notify('New password confirmation does not match.', 'error');
     try { await api('/api/admin/password', { method: 'PUT', body: { currentPassword: data.get('currentPassword'), newPassword: data.get('newPassword') } }); form.reset(); notify('Password updated.'); } catch (error) { notify(error.message, 'error'); }
